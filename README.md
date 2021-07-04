@@ -53,7 +53,8 @@ Flags:
             "stuff": "stuff3",
             "differentStuff": "differentStuff"
         }
-    ]
+    ],
+    "nothing": null
 }
 ```
 
@@ -61,24 +62,25 @@ The above JSON object Will produce this output:
 
 ```golang
 type Test struct {
-        Currency     string     `json:"currency"`
         Amount       float64    `json:"amount"`
-        Map          *Map       `json:"map"`
         Array        []float64  `json:"array"`
-        StringArray  []string   `json:"string_array"`
         CamelKey     string     `json:"CamelKey"`
         BlahBlahBlah string     `json:"blahBlahBlah"`
         Structs      []*Structs `json:"structs"`
+        Currency     string     `json:"currency"`
+        Map          *Map       `json:"map"`
+        StringArray  []string   `json:"string_array"`
+        Nothing      string     `json:"nothing"`
+}
+
+type Structs struct {
+        DifferentStuff string `json:"differentStuff,omitempty"`
+        Stuff          string `json:"stuff"`
 }
 
 type Map struct {
         Something string `json:"something"`
         This      bool   `json:"this"`
-}
-
-type Structs struct {
-        Stuff          string `json:"stuff"`
-        DifferentStuff string `json:"differentStuff,omitempty"`
 }
 ```
 

@@ -107,3 +107,4 @@ type ArrayTest struct {
 ## TODO
 
 * De-duplicate structs that are created more than once by multiple instances in the example JSON file
+* Handle plural names for slice types

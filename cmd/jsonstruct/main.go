@@ -72,7 +72,7 @@ func main() {
 	jsp := &jsonstruct.Producer{
 		VerboseValueComments: valueComments,
 	}
-	js, err := jsp.StructsFromExampleFile(os.Args[1])
+	js, err := jsp.StructFromExampleFile(os.Args[1])
 	errh(err)
 
 	formatted, err := goFmt(js)

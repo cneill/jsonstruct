@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -17,11 +18,18 @@ var (
 
 func init() {
 	flag.BoolVar(&valueComments, "value-comments", false, "add a comment to struct fields with the example value(s)")
+
+	flag.Usage = func() {
+		fmt.Printf("Usage of %s:\n", os.Args[0])
+		fmt.Printf("%s [flags] [file name...]\n\n", os.Args[0])
+		fmt.Println("Flags:")
+		flag.PrintDefaults()
+	}
 }
 
 func errh(err error) {
 	if err != nil {
-		panic(err)
+		log.Fatalf("%v\n", err)
 	}
 }
 
@@ -63,22 +71,26 @@ func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		errh(fmt.Errorf("must supply a file name"))
-	}
-
 	flag.Parse()
+
+	if flag.NArg() < 1 {
+		flag.Usage()
+		errh(fmt.Errorf("must supply one or more file names"))
+	}
 
 	jsp := &jsonstruct.Producer{
 		VerboseValueComments: valueComments,
 	}
-	js, err := jsp.StructFromExampleFile(os.Args[1])
-	errh(err)
 
-	formatted, err := goFmt(js)
-	if err != nil {
-		fmt.Printf("%s\n", js.String())
-	} else {
-		fmt.Println(formatted)
+	for _, file := range flag.Args() {
+		js, err := jsp.StructFromExampleFile(file)
+		errh(err)
+
+		formatted, err := goFmt(js)
+		if err != nil {
+			fmt.Printf("%s\n", js.String())
+		} else {
+			fmt.Println(formatted)
+		}
 	}
 }

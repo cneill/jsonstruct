@@ -66,3 +66,13 @@ type Structs struct {
         DifferentStuff string `json:"differentStuff,omitempty"`
 }
 ```
+
+## Notes
+
+* When a slice of JSON objects is detected, any keys that are provided in some objects but not others
+  will get the `,omitempty` flag
+* All numbers will be treated as `float64` - this is how Go interprets all JSON numbers
+
+## TODO
+
+* De-duplicate structs that are created more than once by multiple instances in the example JSON file

@@ -103,6 +103,7 @@ type ArrayTest struct {
 * When the same field is detected in multiple objects in a JSON array with different value types, the
   Go type will be `*json.RawMessage`, which will contain the raw bytes of the field to allow for
   different types
+* Defaults to a string type when JSON `null` is provided
 
 ## TODO
 

@@ -2,9 +2,9 @@
 
 `jsonstruct` is both a library and a command line tool to produce Go structs based on example JSON text.
 
-## Example
+## Examples
 
-The following example JSON file
+### JSON object
 
 ```json
 {
@@ -42,7 +42,7 @@ The following example JSON file
 }
 ```
 
-Will produce this output
+The above JSON object Will produce this output:
 
 ```golang
 type Test struct {
@@ -67,11 +67,42 @@ type Structs struct {
 }
 ```
 
+### JSON array of objects
+
+```json
+[
+    {
+        "stuff": "stuff"
+    },
+    {
+        "stuff": "stuff2"
+    },
+    {
+        "stuff": "stuff3",
+        "differentStuff": "differentStuff"
+    },
+    {
+        "stuff": 1,
+        "differentStuff": "blah"
+    }
+]
+```
+
+```golang
+type ArrayTest struct {
+        Stuff          *json.RawMessage `json:"stuff"`
+        DifferentStuff string           `json:"differentStuff,omitempty"`
+}
+```
+
 ## Notes
 
-* When a slice of JSON objects is detected, any keys that are provided in some objects but not others
+* When an array of JSON objects is detected, any keys that are provided in some objects but not others
   will get the `,omitempty` flag
 * All numbers will be treated as `float64` - this is how Go interprets all JSON numbers
+* When the same field is detected in multiple objects in a JSON array with different value types, the
+  Go type will be `*json.RawMessage`, which will contain the raw bytes of the field to allow for
+  different types
 
 ## TODO
 

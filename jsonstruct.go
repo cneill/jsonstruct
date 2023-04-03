@@ -321,7 +321,9 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 		return nil, err
 	}
 
-	js.Fields.Sort()
+	if p.SortFields {
+		js.Fields.Sort()
+	}
 
 	return js, nil
 }

@@ -54,6 +54,16 @@ func (j *JSONStruct) Equals(compare *JSONStruct) bool {
 	return true
 }
 
+func (j *JSONStruct) Sort() {
+	j.Fields.Sort()
+
+	for _, field := range j.Fields {
+		if field.Child != nil {
+			field.Child.Sort()
+		}
+	}
+}
+
 // Field describes a struct field in a JSONStruct.
 type Field struct {
 	Name       string
@@ -322,7 +332,7 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 	}
 
 	if p.SortFields {
-		js.Fields.Sort()
+		js.Sort()
 	}
 
 	return js, nil

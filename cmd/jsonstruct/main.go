@@ -13,11 +13,13 @@ import (
 )
 
 var (
+	sortFields    bool
 	valueComments bool
 )
 
 func init() {
 	flag.BoolVar(&valueComments, "value-comments", false, "add a comment to struct fields with the example value(s)")
+	flag.BoolVar(&sortFields, "sort-fields", true, "sort the fields in alphabetical order")
 
 	flag.Usage = func() {
 		fmt.Printf("Usage of %s:\n", os.Args[0])
@@ -49,7 +51,7 @@ func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
 	defer f.Close()
 	defer os.Remove(f.Name())
 
-	var contents = packagePrefix
+	contents := packagePrefix
 	for _, js := range structs {
 		contents += js.String() + "\n"
 	}
@@ -79,6 +81,7 @@ func main() {
 	}
 
 	jsp := &jsonstruct.Producer{
+		SortFields:           sortFields,
 		VerboseValueComments: valueComments,
 	}
 

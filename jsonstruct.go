@@ -7,22 +7,25 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 )
 
-// Raw is a convenience type for map[string]interface{}, which is the default raw message type from encoding/json
+// Raw is a convenience type for map[string]interface{}, which is the default raw message type from encoding/json.
 type Raw map[string]interface{}
 
-// Producer defines the options for how structs will be structured
+// Producer defines the options for how structs will be structured.
 type Producer struct {
-	// VerboseValueComments will include a comment above every struct field with the value(s) received from the examples provided
+	// SortFields will sort the fields of the resulting struct alphabetically.
+	SortFields bool
+	// VerboseValueComments will include a comment above every struct field with the value(s) received from the examples provided.
 	VerboseValueComments bool
 }
 
-// JSONStruct is a struct produced from examples
+// JSONStruct is a struct produced from examples.
 type JSONStruct struct {
 	Name   string
-	Fields []Field
+	Fields Fields
 }
 
 func (j *JSONStruct) String() string {
@@ -51,7 +54,7 @@ func (j *JSONStruct) Equals(compare *JSONStruct) bool {
 	return true
 }
 
-// Field describes a struct field in a JSONStruct
+// Field describes a struct field in a JSONStruct.
 type Field struct {
 	Name       string
 	RawName    string
@@ -64,7 +67,7 @@ type Field struct {
 	Comments   []string
 }
 
-// Tag returns the tag to include with a struct field
+// Tag returns the tag to include with a struct field.
 func (f Field) Tag() string {
 	var result string
 
@@ -117,7 +120,7 @@ func (f Field) String() string {
 	return result
 }
 
-// Equals compares 2 Field objects to see if they are have the same fields
+// Equals compares 2 Field objects to see if they are have the same fields.
 func (f Field) Equals(compare Field) bool {
 	if f.Name != compare.Name {
 		return false
@@ -134,13 +137,21 @@ func (f Field) Equals(compare Field) bool {
 	return true
 }
 
-// GetNormalizedName normalizes a Field name from its JSON counterpart - removing "-", "_", ".", capitalizing properly
+type Fields []Field
+
+func (f Fields) Sort() {
+	sort.Slice(f, func(i, j int) bool {
+		return strings.ToLower(f[i].Name) < strings.ToLower(f[j].Name)
+	})
+}
+
+// GetNormalizedName normalizes a Field name from its JSON counterpart - removing "-", "_", ".", capitalizing properly.
 func GetNormalizedName(key string) string {
 	key = strings.ReplaceAll(key, "-", " ")
 	key = strings.ReplaceAll(key, "_", " ")
 	key = strings.ReplaceAll(key, ".", " ")
 	words := strings.Split(key, " ")
-	var temp = []string{}
+	temp := []string{}
 	for _, word := range words {
 		tmpWord := strings.ToUpper(word)
 		if _, ok := commonInitialisms[tmpWord]; ok {
@@ -154,7 +165,7 @@ func GetNormalizedName(key string) string {
 	return key
 }
 
-// GetSliceKind takes a slice object and returns the Kind of slice represented - defaults to reflect.String if unknown
+// GetSliceKind takes a slice object and returns the Kind of slice represented - defaults to reflect.String if unknown.
 func GetSliceKind(value interface{}) reflect.Kind {
 	typeOf := reflect.TypeOf(value)
 	kind := typeOf.Kind()
@@ -189,10 +200,9 @@ func GetSliceKind(value interface{}) reflect.Kind {
 	}
 
 	return reflect.String
-
 }
 
-// GetFieldKind takes any object and returns the Kind represented
+// GetFieldKind takes any object and returns the Kind represented.
 func GetFieldKind(value interface{}) reflect.Kind {
 	if value == nil {
 		return reflect.String
@@ -212,9 +222,9 @@ func GetFieldKind(value interface{}) reflect.Kind {
 	return reflect.String
 }
 
-// GetFieldsFromRaw takes a map[string]interface{} and returns the Fields represented
-func (p *Producer) GetFieldsFromRaw(input Raw) ([]Field, error) {
-	var results = []Field{}
+// GetFieldsFromRaw takes a map[string]interface{} and returns the Fields represented.
+func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
+	results := Fields{}
 
 	for k, v := range input {
 		kind := GetFieldKind(v)
@@ -259,7 +269,7 @@ func (p *Producer) GetFieldsFromRaw(input Raw) ([]Field, error) {
 	return results, nil
 }
 
-// NameFromInputFile strips the file path and extension, using GetNormalizedName to return a struct name
+// NameFromInputFile strips the file path and extension, using GetNormalizedName to return a struct name.
 func NameFromInputFile(inputFile string) string {
 	_, fName := path.Split(inputFile)
 	ext := path.Ext(fName)
@@ -268,7 +278,7 @@ func NameFromInputFile(inputFile string) string {
 	return name
 }
 
-// StructFromRaw returns a JSONStruct constructed from the provided name and Raw object
+// StructFromRaw returns a JSONStruct constructed from the provided name and Raw object.
 func (p *Producer) StructFromRaw(name string, raw Raw) (*JSONStruct, error) {
 	fields, err := p.GetFieldsFromRaw(raw)
 	if err != nil {
@@ -282,7 +292,7 @@ func (p *Producer) StructFromRaw(name string, raw Raw) (*JSONStruct, error) {
 	return js, nil
 }
 
-// StructFromBytes unmarshals either a JSON object or an array of JSON objects into a Raw object, and returns a JSONStruct
+// StructFromBytes unmarshals either a JSON object or an array of JSON objects into a Raw object, and returns a JSONStruct.
 func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, error) {
 	raw := Raw{}
 	if err := json.Unmarshal(contents, &raw); err == nil {
@@ -297,7 +307,7 @@ func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, e
 	return nil, fmt.Errorf("failed to parse as a JSON object or an array of JSON objects")
 }
 
-// StructFromExampleFile reads "inputFile", deriving a struct name from the file name and returning a JSONStruct
+// StructFromExampleFile reads "inputFile", deriving a struct name from the file name and returning a JSONStruct.
 func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) {
 	contents, err := ioutil.ReadFile(inputFile)
 	if err != nil {
@@ -306,10 +316,17 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 
 	name := NameFromInputFile(inputFile)
 
-	return p.StructFromBytes(name, contents)
+	js, err := p.StructFromBytes(name, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	js.Fields.Sort()
+
+	return js, nil
 }
 
-// StructFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein
+// StructFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein.
 func (p *Producer) StructFromSlice(name string, value interface{}) (*JSONStruct, error) {
 	typeOf := reflect.TypeOf(value)
 	kind := typeOf.Kind()
@@ -323,7 +340,7 @@ func (p *Producer) StructFromSlice(name string, value interface{}) (*JSONStruct,
 		return nil, fmt.Errorf("slice length was 0")
 	}
 
-	allFields := map[string][]Field{}
+	allFields := map[string]Fields{}
 
 	for i := 0; i < valOf.Len(); i++ {
 		elemVal := valOf.Index(i)
@@ -342,7 +359,7 @@ func (p *Producer) StructFromSlice(name string, value interface{}) (*JSONStruct,
 		}
 		for _, field := range js.Fields {
 			if _, ok := allFields[field.Name]; !ok {
-				allFields[field.Name] = []Field{}
+				allFields[field.Name] = Fields{}
 			}
 
 			allFields[field.Name] = append(allFields[field.Name], field)
@@ -351,7 +368,7 @@ func (p *Producer) StructFromSlice(name string, value interface{}) (*JSONStruct,
 
 	js := &JSONStruct{
 		Name:   name,
-		Fields: []Field{},
+		Fields: Fields{},
 	}
 
 	for _, fieldSlice := range allFields {

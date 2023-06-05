@@ -13,25 +13,22 @@ import (
 )
 
 var (
+	name          string
 	sortFields    bool
 	valueComments bool
 )
 
 func init() {
+	flag.StringVar(&name, "name", "", "override the main structs of all passed in files/stdin objects")
 	flag.BoolVar(&valueComments, "value-comments", false, "add a comment to struct fields with the example value(s)")
 	flag.BoolVar(&sortFields, "sort-fields", true, "sort the fields in alphabetical order")
 
 	flag.Usage = func() {
 		fmt.Printf("Usage of %s:\n", os.Args[0])
 		fmt.Printf("%s [flags] [file name...]\n\n", os.Args[0])
+		fmt.Printf("You can also pass in JSON to stdin if you prefer.")
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
-	}
-}
-
-func errh(err error) {
-	if err != nil {
-		log.Fatalf("%v\n", err)
 	}
 }
 
@@ -72,28 +69,60 @@ func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
 	return outputStr, nil
 }
 
-func main() {
+func isStdin() bool {
+	stat, _ := os.Stdin.Stat()
+	return (stat.Mode() & os.ModeCharDevice) == 0
+}
+
+func run() error {
 	flag.Parse()
 
-	if flag.NArg() < 1 {
+	if flag.NArg() < 1 && !isStdin() {
 		flag.Usage()
-		errh(fmt.Errorf("must supply one or more file names"))
+
+		return fmt.Errorf("must supply one or more file names, or provide something from stdin")
 	}
 
 	jsp := &jsonstruct.Producer{
 		SortFields:           sortFields,
 		VerboseValueComments: valueComments,
+		Name:                 name,
 	}
 
-	for _, file := range flag.Args() {
-		js, err := jsp.StructFromExampleFile(file)
-		errh(err)
+	results := []*jsonstruct.JSONStruct{}
 
-		formatted, err := goFmt(js)
+	if isStdin() {
+		js, err := jsp.StructFromStdin()
 		if err != nil {
-			fmt.Printf("%s\n", js.String())
+			return err
+		}
+
+		results = append(results, js)
+	} else {
+		for _, file := range flag.Args() {
+			js, err := jsp.StructFromExampleFile(file)
+			if err != nil {
+				return err
+			}
+
+			results = append(results, js)
+		}
+	}
+
+	for _, result := range results {
+		formatted, err := goFmt(result)
+		if err != nil {
+			fmt.Printf("%s\n", result.String())
 		} else {
 			fmt.Println(formatted)
 		}
+	}
+
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatalf("%v\n", err)
 	}
 }

@@ -3,6 +3,7 @@ package jsonstruct
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -20,6 +21,8 @@ type Producer struct {
 	SortFields bool
 	// VerboseValueComments will include a comment above every struct field with the value(s) received from the examples provided.
 	VerboseValueComments bool
+	// Name will override the name of the main struct
+	Name string
 }
 
 // JSONStruct is a struct produced from examples.
@@ -325,6 +328,33 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 	}
 
 	name := NameFromInputFile(inputFile)
+	if p.Name != "" {
+		name = p.Name
+	}
+
+	js, err := p.StructFromBytes(name, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.SortFields {
+		js.Sort()
+	}
+
+	return js, nil
+}
+
+// StructFromStdin reads stdin and returns a JSONStruct, or error.
+func (p *Producer) StructFromStdin() (*JSONStruct, error) {
+	contents, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+
+	name := p.Name
+	if name == "" {
+		name = "STDIN"
+	}
 
 	js, err := p.StructFromBytes(name, contents)
 	if err != nil {

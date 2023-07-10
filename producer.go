@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 )
@@ -30,6 +29,7 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 			RawName: k,
 			Kind:    kind,
 		}
+
 		if kind != reflect.Bool && p.VerboseValueComments {
 			val := reflect.ValueOf(v)
 			if val.String() != "" {
@@ -48,6 +48,7 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 				if err != nil {
 					return nil, err
 				}
+
 				field.Child = child
 			}
 		} else if kind == reflect.Map {
@@ -71,6 +72,7 @@ func (p *Producer) StructFromRaw(name string, raw Raw) (*JSONStruct, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	js := &JSONStruct{
 		Name:   name,
 		Fields: fields,
@@ -96,9 +98,9 @@ func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, e
 
 // StructFromExampleFile reads "inputFile", deriving a struct name from the file name and returning a JSONStruct.
 func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) {
-	contents, err := ioutil.ReadFile(inputFile)
+	contents, err := os.ReadFile(inputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
+		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	name := NameFromInputFile(inputFile)
@@ -122,7 +124,7 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 func (p *Producer) StructFromStdin() (*JSONStruct, error) {
 	contents, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
+		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	name := p.Name
@@ -144,8 +146,10 @@ func (p *Producer) StructFromStdin() (*JSONStruct, error) {
 
 // StructFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein.
 func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) {
-	typeOf := reflect.TypeOf(value)
-	kind := typeOf.Kind()
+	var (
+		typeOf = reflect.TypeOf(value)
+		kind   = typeOf.Kind()
+	)
 
 	if kind != reflect.Slice {
 		panic(fmt.Errorf("must provide a value with Kind == Slice"))
@@ -161,6 +165,7 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 	for i := 0; i < valOf.Len(); i++ {
 		elemVal := valOf.Index(i)
 		iface := elemVal.Interface()
+
 		var raw Raw
 		if v, ok := iface.(map[string]any); ok {
 			raw = Raw(v)
@@ -169,10 +174,12 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 		} else {
 			return nil, fmt.Errorf("got a slice item that was not a map[string]interface - not a struct")
 		}
+
 		js, err := p.StructFromRaw(name, raw)
 		if err != nil {
 			return nil, err
 		}
+
 		for _, field := range js.Fields {
 			if _, ok := allFields[field.Name]; !ok {
 				allFields[field.Name] = Fields{}
@@ -197,6 +204,7 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 			for i := 1; i < len(fieldSlice); i++ {
 				if !first.Equals(fieldSlice[i]) {
 					first.RawMessage = true
+
 					break
 				}
 			}

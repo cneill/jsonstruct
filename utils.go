@@ -15,23 +15,30 @@ func GetNormalizedName(key string) string {
 	key = strings.ReplaceAll(key, ".", " ")
 	words := strings.Split(key, " ")
 	temp := []string{}
+
 	for _, word := range words {
 		tmpWord := strings.ToUpper(word)
 		if _, ok := commonInitialisms[tmpWord]; ok {
 			word = strings.ToUpper(tmpWord)
 		}
+
 		temp = append(temp, word)
 	}
+
 	key = strings.Join(temp, " ")
+	// TODO: decide whether golang.org/x/text/cases is worth it
 	key = strings.Title(key)
 	key = strings.ReplaceAll(key, " ", "")
+
 	return key
 }
 
 // GetSliceKind takes a slice object and returns the Kind of slice represented - defaults to reflect.String if unknown.
 func GetSliceKind(value any) reflect.Kind {
-	typeOf := reflect.TypeOf(value)
-	kind := typeOf.Kind()
+	var (
+		typeOf = reflect.TypeOf(value)
+		kind   = typeOf.Kind()
+	)
 
 	if kind != reflect.Slice {
 		panic(fmt.Errorf("must provide a value with Kind == Slice"))
@@ -41,11 +48,13 @@ func GetSliceKind(value any) reflect.Kind {
 
 	if valOf.Len() == 0 {
 		fmt.Fprintf(os.Stderr, "Got an empty array, defaulting to string")
+
 		return reflect.String
 	}
 
 	elemVal := valOf.Index(0)
 	iface := elemVal.Interface()
+
 	switch iface.(type) {
 	case int, int8, int16, int32, int64:
 		return reflect.Int64
@@ -63,6 +72,7 @@ func GetSliceKind(value any) reflect.Kind {
 	}
 
 	fmt.Fprintf(os.Stderr, "Not sure what to do with an array of %s... defaulting to string\n", elemKind)
+
 	return reflect.String
 }
 
@@ -71,7 +81,9 @@ func GetFieldKind(value any) reflect.Kind {
 	if value == nil {
 		return reflect.String
 	}
+
 	typeOf := reflect.TypeOf(value)
+
 	kind := typeOf.Kind()
 	switch kind {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -81,8 +93,10 @@ func GetFieldKind(value any) reflect.Kind {
 	case reflect.Bool, reflect.String, reflect.Map, reflect.Slice:
 		return kind
 	}
+
 	fmt.Printf("KIND: %s\nTypeOf: %#v\n", kind, typeOf)
 	fmt.Printf("%#v\n", value)
+
 	return reflect.String
 }
 
@@ -92,5 +106,6 @@ func NameFromInputFile(inputFile string) string {
 	ext := path.Ext(fName)
 	name := strings.TrimSuffix(inputFile, ext)
 	name = GetNormalizedName(name)
+
 	return name
 }

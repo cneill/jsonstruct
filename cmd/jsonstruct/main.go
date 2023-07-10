@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -18,7 +17,7 @@ var (
 	valueComments bool
 )
 
-func init() {
+func setupFlags() error {
 	flag.StringVar(&name, "name", "", "override the main structs of all passed in files/stdin objects")
 	flag.BoolVar(&valueComments, "value-comments", false, "add a comment to struct fields with the example value(s)")
 	flag.BoolVar(&sortFields, "sort-fields", true, "sort the fields in alphabetical order")
@@ -30,6 +29,16 @@ func init() {
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
 	}
+
+	flag.Parse()
+
+	if flag.NArg() < 1 && !isStdin() {
+		flag.Usage()
+
+		return fmt.Errorf("must supply one or more file names, or provide something from stdin")
+	}
+
+	return nil
 }
 
 var packagePrefix = "package temp\n"
@@ -37,12 +46,12 @@ var packagePrefix = "package temp\n"
 func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
 	goFmt, err := exec.LookPath("gofmt")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to find 'gofmt' binary: %w", err)
 	}
 
-	f, err := ioutil.TempFile("", "jsonstruct-*")
+	f, err := os.CreateTemp("", "jsonstruct-*")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create temporary file: %w", err)
 	}
 
 	defer f.Close()
@@ -54,14 +63,16 @@ func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
 	}
 
 	if _, err := f.WriteString(contents); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to write to temporary file %q: %w", f.Name(), err)
 	}
 
 	cmd := exec.Command(goFmt, "-e", f.Name())
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("%s\n", output)
-		return "", fmt.Errorf("failed to execute gofmt: %v", err)
+
+		return "", fmt.Errorf("failed to execute 'gofmt': %w", err)
 	}
 
 	outputStr := strings.TrimSpace(strings.TrimPrefix(string(output), packagePrefix))
@@ -71,16 +82,13 @@ func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
 
 func isStdin() bool {
 	stat, _ := os.Stdin.Stat()
+
 	return (stat.Mode() & os.ModeCharDevice) == 0
 }
 
 func run() error {
-	flag.Parse()
-
-	if flag.NArg() < 1 && !isStdin() {
-		flag.Usage()
-
-		return fmt.Errorf("must supply one or more file names, or provide something from stdin")
+	if err := setupFlags(); err != nil {
+		return err
 	}
 
 	jsp := &jsonstruct.Producer{

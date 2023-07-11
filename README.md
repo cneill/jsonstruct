@@ -1,6 +1,7 @@
 # jsonstruct
 
-`jsonstruct` is both a library and a command line tool to produce Go structs based on example JSON text.
+`jsonstruct` is both a library and a command line tool to produce Go structs based on example JSON text. It's in the middle of
+a refactor, so you probably don't want to rely on it too heavily right now.
 
 ## Installation
 

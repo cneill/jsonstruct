@@ -18,27 +18,41 @@ type Producer struct {
 	Name string
 }
 
+var skippedExamples = map[reflect.Kind]bool{
+	reflect.Invalid: true,
+	// reflect.Bool:    true,
+	reflect.Pointer: true,
+}
+
 // GetFieldsFromRaw takes a map[string]any and returns the Fields represented.
 func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 	results := Fields{}
 
 	for k, v := range input {
 		kind := GetFieldKind(v)
+		// TODO: mark the incorrect float64s int64s here and deal with their values?
 		field := Field{
-			Name:    GetNormalizedName(k),
-			RawName: k,
-			Kind:    kind,
+			RawName:  k,
+			RawValue: v,
+			Name:     GetNormalizedName(k),
+			Value:    reflect.ValueOf(v),
+			Kind:     kind,
 		}
 
-		if kind != reflect.Bool && p.VerboseValueComments {
-			val := reflect.ValueOf(v)
-			if val.String() != "" {
-				field.Comments = []string{fmt.Sprintf("Ex: %q", val.String())}
+		// TODO: figure out a smarter way to deal with this...
+		if _, ok := skippedExamples[kind]; !ok && p.VerboseValueComments {
+			if exStr := field.ExampleString(); exStr != "" {
+				field.Comments = []string{fmt.Sprintf("Ex: %s", exStr)}
 			}
 		}
 
 		if kind == reflect.Slice {
-			field.SliceKind = GetSliceKind(v)
+			skind, err := GetSliceKind(v)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get slice kind: %w", err)
+			}
+
+			field.SliceKind = skind
 			// TODO: figure out how to better deal with plurals here
 			if field.SliceKind == reflect.Struct {
 				field.StructType = GetNormalizedName(k)

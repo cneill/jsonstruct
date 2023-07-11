@@ -9,8 +9,10 @@ import (
 
 // Field describes a struct field in a JSONStruct.
 type Field struct {
-	Name       string
 	RawName    string
+	RawValue   any
+	Name       string
+	Value      reflect.Value
 	Kind       reflect.Kind
 	SliceKind  reflect.Kind
 	StructType string
@@ -34,15 +36,34 @@ func (f Field) Tag() string {
 }
 
 func (f Field) String() string {
+	result := fmt.Sprintf("%s %s %s", f.Name, f.TypeString(), f.Tag())
+
+	if len(f.Comments) > 1 {
+		result = fmt.Sprintf("// %s\n%s", strings.Join(f.Comments, "\n//"), result)
+	} else if len(f.Comments) == 1 {
+		result = fmt.Sprintf("%s // %s", result, f.Comments[0])
+	}
+
+	return result
+}
+
+func (f Field) TypeString() string {
 	kind := f.Kind.String()
 
-	if f.Kind == reflect.Map {
+	switch {
+	case f.RawMessage:
+		kind = "*json.RawMessage"
+	case f.Kind == reflect.Float64:
+		if CanBeInt64(f.RawValue.(float64)) {
+			kind = "int64"
+		}
+	case f.Kind == reflect.Map:
 		if f.StructType == "" {
 			kind = "map[string]any"
 		} else {
 			kind = fmt.Sprintf("*%s", f.StructType)
 		}
-	} else if f.Kind == reflect.Slice {
+	case f.Kind == reflect.Slice:
 		if f.SliceKind == reflect.Struct {
 			if f.StructType == "" {
 				kind = "[]struct{}"
@@ -54,22 +75,11 @@ func (f Field) String() string {
 		}
 	}
 
-	if f.RawMessage {
-		kind = "*json.RawMessage"
-	}
-
-	result := fmt.Sprintf("%s %s %s", f.Name, kind, f.Tag())
-
-	if len(f.Comments) > 1 {
-		result = fmt.Sprintf("// %s\n%s", strings.Join(f.Comments, "\n//"))
-	} else if len(f.Comments) == 1 {
-		result = fmt.Sprintf("%s // %s", result, f.Comments[0])
-	}
-
-	return result
+	return kind
 }
 
 // Equals compares 2 Field objects to see if they are have the same fields.
+// TODO: improve this
 func (f Field) Equals(compare Field) bool {
 	switch {
 	case f.Name != compare.Name:
@@ -85,6 +95,11 @@ func (f Field) Equals(compare Field) bool {
 	}
 
 	return true
+}
+
+// GetExampleString returns the "// Ex: [whatever]" text when value comments are enabled.
+func (f Field) ExampleString() string {
+	return getExampleString(f.RawValue)
 }
 
 type Fields []Field

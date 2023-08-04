@@ -1,84 +1,16 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/cneill/jsonstruct"
+
+	"github.com/urfave/cli/v2"
 )
-
-var (
-	name          string
-	sortFields    bool
-	valueComments bool
-)
-
-func setupFlags() error {
-	flag.StringVar(&name, "name", "", "override the main structs of all passed in files/stdin objects")
-	flag.BoolVar(&valueComments, "value-comments", false, "add a comment to struct fields with the example value(s)")
-	flag.BoolVar(&sortFields, "sort-fields", true, "sort the fields in alphabetical order")
-
-	flag.Usage = func() {
-		fmt.Printf("Usage of %s:\n", os.Args[0])
-		fmt.Printf("%s [flags] [file name...]\n\n", os.Args[0])
-		fmt.Printf("You can also pass in JSON to stdin if you prefer.")
-		fmt.Println("Flags:")
-		flag.PrintDefaults()
-	}
-
-	flag.Parse()
-
-	if flag.NArg() < 1 && !isStdin() {
-		flag.Usage()
-
-		return fmt.Errorf("must supply one or more file names, or provide something from stdin")
-	}
-
-	return nil
-}
 
 var packagePrefix = "package temp\n"
-
-func goFmt(structs ...*jsonstruct.JSONStruct) (string, error) {
-	goFmt, err := exec.LookPath("gofmt")
-	if err != nil {
-		return "", fmt.Errorf("failed to find 'gofmt' binary: %w", err)
-	}
-
-	f, err := os.CreateTemp("", "jsonstruct-*")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %w", err)
-	}
-
-	defer f.Close()
-	defer os.Remove(f.Name())
-
-	contents := packagePrefix
-	for _, js := range structs {
-		contents += js.String() + "\n"
-	}
-
-	if _, err := f.WriteString(contents); err != nil {
-		return "", fmt.Errorf("failed to write to temporary file %q: %w", f.Name(), err)
-	}
-
-	cmd := exec.Command(goFmt, "-e", f.Name())
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s\n", output)
-
-		return "", fmt.Errorf("failed to execute 'gofmt': %w", err)
-	}
-
-	outputStr := strings.TrimSpace(strings.TrimPrefix(string(output), packagePrefix))
-
-	return outputStr, nil
-}
 
 func isStdin() bool {
 	stat, _ := os.Stdin.Stat()
@@ -87,14 +19,48 @@ func isStdin() bool {
 }
 
 func run() error {
-	if err := setupFlags(); err != nil {
-		return err
+	app := &cli.App{
+		Name:        "jsonstruct",
+		Action:      genStruct,
+		ArgsUsage:   "[file]...",
+		Usage:       "generate Go structs for JSON values",
+		Description: `You can either pass in files as args or JSON in STDIN. Results are printed to STDOUT.`,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "name",
+				Aliases: []string{"n"},
+				Usage:   "override the default name derived from filename",
+			},
+			&cli.BoolFlag{
+				Name:    "value-comments",
+				Aliases: []string{"c"},
+				Usage:   "add a comment to struct fields with the example value(s)",
+			},
+			&cli.BoolFlag{
+				Name:    "sort-fields",
+				Aliases: []string{"s"},
+				Usage:   "sort the fields in alphabetical order; default behavior is to mirror input",
+			},
+			&cli.BoolFlag{
+				Name:    "inline",
+				Aliases: []string{"i"},
+				Usage:   "use inline structs instead of creating different types for each object",
+			},
+		},
 	}
 
+	if err := app.Run(os.Args); err != nil {
+		return fmt.Errorf("ERROR: %w", err)
+	}
+
+	return nil
+}
+
+func genStruct(ctx *cli.Context) error {
 	jsp := &jsonstruct.Producer{
-		SortFields:           sortFields,
-		VerboseValueComments: valueComments,
-		Name:                 name,
+		SortFields:    ctx.Bool("sort-fields"),
+		ValueComments: ctx.Bool("value-comments"),
+		Name:          ctx.String("name"),
 	}
 
 	results := []*jsonstruct.JSONStruct{}
@@ -107,7 +73,7 @@ func run() error {
 
 		results = append(results, js)
 	} else {
-		for _, file := range flag.Args() {
+		for _, file := range ctx.Args().Slice() {
 			js, err := jsp.StructFromExampleFile(file)
 			if err != nil {
 				return err
@@ -118,7 +84,7 @@ func run() error {
 	}
 
 	for _, result := range results {
-		formatted, err := goFmt(result)
+		formatted, err := jsonstruct.GoFmt(result)
 		if err != nil {
 			fmt.Printf("%s\n", result.String())
 		} else {

@@ -12,10 +12,11 @@ import (
 type Producer struct {
 	// SortFields will sort the fields of the resulting struct alphabetically.
 	SortFields bool
-	// VerboseValueComments will include a comment above every struct field with the value(s) received from the examples provided.
-	VerboseValueComments bool
-	// Name will override the name of the main struct
+	// ValueComments will include a comment with every struct field with the value(s) received from the examples provided.
+	ValueComments bool
+	// Name will override the name of the main struct.
 	Name string
+	// Inline will use inline structs instead of creating new types for each JSON object detected.
 }
 
 var skippedExamples = map[reflect.Kind]bool{
@@ -40,7 +41,7 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 		}
 
 		// TODO: figure out a smarter way to deal with this...
-		if _, ok := skippedExamples[kind]; !ok && p.VerboseValueComments {
+		if _, ok := skippedExamples[kind]; !ok && p.ValueComments {
 			if exStr := field.ExampleString(); exStr != "" {
 				field.Comments = []string{fmt.Sprintf("Ex: %s", exStr)}
 			}

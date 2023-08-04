@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path"
 	"reflect"
 	"strings"
@@ -169,6 +170,7 @@ func getSliceExampleString(rawValue any) string {
 	}
 
 	result = "["
+
 	for i := 0; i < val.Len(); i++ {
 		itemVal := val.Index(i)
 		itemRaw := itemVal.Interface()
@@ -180,4 +182,36 @@ func getSliceExampleString(rawValue any) string {
 	result += "]"
 
 	return result
+}
+
+func GoFmt(structs ...*JSONStruct) (string, error) {
+	packagePrefix := "package temp\n"
+
+	goFmt, err := exec.LookPath("gofmt")
+	if err != nil {
+		return "", fmt.Errorf("failed to find 'gofmt' binary: %w", err)
+	}
+
+	contents := packagePrefix
+	for _, js := range structs {
+		contents += js.String() + "\n"
+	}
+
+	r := strings.NewReader(contents)
+
+	cmd := &exec.Cmd{
+		Path:  goFmt,
+		Stdin: r,
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("%s\n", output)
+
+		return "", fmt.Errorf("failed to execute 'gofmt': %w", err)
+	}
+
+	outputStr := strings.TrimSpace(strings.TrimPrefix(string(output), packagePrefix))
+
+	return outputStr, nil
 }

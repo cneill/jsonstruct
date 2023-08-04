@@ -10,12 +10,21 @@ import (
 	"strings"
 )
 
-// GetNormalizedName normalizes a Field name from its JSON counterpart - removing "-", "_", ".", capitalizing properly.
-func GetNormalizedName(key string) string {
-	key = strings.ReplaceAll(key, "-", " ")
-	key = strings.ReplaceAll(key, "_", " ")
-	key = strings.ReplaceAll(key, ".", " ")
-	words := strings.Split(key, " ")
+// GetNormalizedName takes in a field name or file name and returns a "normalized" (CamelCase) string suitable for use as a Go
+// variable name.
+func GetNormalizedName(input string) string {
+	var cleaned strings.Builder
+
+	// remove garbage characters
+	for _, r := range input {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			cleaned.WriteRune(r)
+		} else if r == '_' || r == '.' || r == '-' || r == ' ' {
+			cleaned.WriteRune(' ')
+		}
+	}
+
+	words := strings.Split(cleaned.String(), " ")
 	temp := []string{}
 
 	for _, word := range words {
@@ -27,12 +36,10 @@ func GetNormalizedName(key string) string {
 		temp = append(temp, word)
 	}
 
-	key = strings.Join(temp, " ")
-	// TODO: decide whether golang.org/x/text/cases is worth it
-	key = strings.Title(key)
-	key = strings.ReplaceAll(key, " ", "")
+	result := strings.Title(strings.Join(temp, " "))
+	result = strings.ReplaceAll(result, " ", "")
 
-	return key
+	return result
 }
 
 // GetSliceKind takes a slice object and returns the Kind of slice represented - defaults to reflect.String if unknown.

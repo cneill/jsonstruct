@@ -10,6 +10,8 @@ import (
 )
 
 func TestGetNormalizedName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input  string
 		output string
@@ -18,6 +20,13 @@ func TestGetNormalizedName(t *testing.T) {
 		{"remote_-.URL", "RemoteURL"},
 		{"ThiSiSaNumber2", "ThiSiSaNumber2"},
 		{"This_Is_An_ID", "ThisIsAnID"},
+		{"_underscored", "Underscored"},
+		{"($@%)@$%)(@", ""},
+		{"@)(#$)@(#$)@#($garbage@#)$@)#($@)#($", "Garbage"},
+		{"@t@e@s@t", "Test"},
+		{"$aVariableName", "AVariableName"},
+		{"       spaces", "Spaces"},
+		{"here are some spaces", "HereAreSomeSpaces"},
 	}
 
 	for _, test := range tests {
@@ -29,6 +38,8 @@ func TestGetNormalizedName(t *testing.T) {
 type testStruct struct{}
 
 func TestGetSliceKind(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input  any
 		output reflect.Kind
@@ -41,5 +52,23 @@ func TestGetSliceKind(t *testing.T) {
 		output, err := jsonstruct.GetSliceKind(test.input)
 		assert.Nil(t, err)
 		assert.Equal(t, test.output, output)
+	}
+}
+
+func TestNameFromInputFile(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input  string
+		output string
+	}{
+		{"test_file.json", "TestFile"},
+		{"garbagefile", "Garbagefile"},
+		{"CapitalizedFileName.JSON", "CapitalizedFileName"},
+	}
+
+	for _, test := range tests {
+		output := jsonstruct.NameFromInputFile(test.input)
+		assert.Equal(t, output, test.output)
 	}
 }

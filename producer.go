@@ -3,7 +3,6 @@ package jsonstruct
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"reflect"
 )
@@ -93,22 +92,33 @@ func (p *Producer) StructFromRaw(name string, raw Raw) (*JSONStruct, error) {
 		Fields: fields,
 	}
 
-	return js, nil
+	return p.FormatStruct(js), nil
 }
 
 // StructFromBytes unmarshals either a JSON object or an array of JSON objects into a Raw object, and returns a JSONStruct.
 func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, error) {
+	var (
+		result     *JSONStruct
+		produceErr error
+	)
+
 	raw := Raw{}
+	// TODO: check for "[" or "{"? don't do this
 	if err := json.Unmarshal(contents, &raw); err == nil {
-		return p.StructFromRaw(name, raw)
+		result, produceErr = p.StructFromRaw(name, raw)
+	} else {
+		raws := []Raw{}
+		if err := json.Unmarshal(contents, &raws); err != nil {
+			return nil, fmt.Errorf("failed to parse as either object or array of objects: %w", err)
+		}
+		result, produceErr = p.StructFromSlice(name, raws)
 	}
 
-	raws := []Raw{}
-	if err := json.Unmarshal(contents, &raws); err == nil {
-		return p.StructFromSlice(name, raws)
+	if produceErr != nil {
+		return nil, fmt.Errorf("failed to produce a struct: %w", produceErr)
 	}
 
-	return nil, fmt.Errorf("failed to parse as a JSON object or an array of JSON objects")
+	return p.FormatStruct(result), nil
 }
 
 // StructFromExampleFile reads "inputFile", deriving a struct name from the file name and returning a JSONStruct.
@@ -123,40 +133,12 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 		name = p.Name
 	}
 
-	js, err := p.StructFromBytes(name, contents)
+	result, err := p.StructFromBytes(name, contents)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.SortFields {
-		js.Sort()
-	}
-
-	return js, nil
-}
-
-// StructFromStdin reads stdin and returns a JSONStruct, or error.
-func (p *Producer) StructFromStdin() (*JSONStruct, error) {
-	contents, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	name := p.Name
-	if name == "" {
-		name = "STDIN"
-	}
-
-	js, err := p.StructFromBytes(name, contents)
-	if err != nil {
-		return nil, err
-	}
-
-	if p.SortFields {
-		js.Sort()
-	}
-
-	return js, nil
+	return result, nil
 }
 
 // StructFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein.
@@ -235,4 +217,12 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 	}
 
 	return js, nil
+}
+
+func (p *Producer) FormatStruct(js *JSONStruct) *JSONStruct {
+	if p.SortFields {
+		js.Sort()
+	}
+
+	return js
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -9,8 +10,6 @@ import (
 
 	"github.com/urfave/cli/v2"
 )
-
-var packagePrefix = "package temp\n"
 
 func isStdin() bool {
 	stat, _ := os.Stdin.Stat()
@@ -21,7 +20,7 @@ func isStdin() bool {
 func run() error {
 	app := &cli.App{
 		Name:        "jsonstruct",
-		Action:      genStruct,
+		Action:      genStructs,
 		ArgsUsage:   "[file]...",
 		Usage:       "generate Go structs for JSON values",
 		Description: `You can either pass in files as args or JSON in STDIN. Results are printed to STDOUT.`,
@@ -56,7 +55,7 @@ func run() error {
 	return nil
 }
 
-func genStruct(ctx *cli.Context) error {
+func genStructs(ctx *cli.Context) error {
 	jsp := &jsonstruct.Producer{
 		SortFields:    ctx.Bool("sort-fields"),
 		ValueComments: ctx.Bool("value-comments"),
@@ -66,20 +65,25 @@ func genStruct(ctx *cli.Context) error {
 	results := []*jsonstruct.JSONStruct{}
 
 	if isStdin() {
-		js, err := jsp.StructFromStdin()
+		contents, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			return err
+			return fmt.Errorf("error reading from stdin: %w", err)
 		}
 
-		results = append(results, js)
+		result, err := jsp.StructFromBytes("stdin", contents)
+		if err != nil {
+			return fmt.Errorf("failed to parse stdin: %w", err)
+		}
+
+		results = append(results, result)
 	} else {
 		for _, file := range ctx.Args().Slice() {
-			js, err := jsp.StructFromExampleFile(file)
+			result, err := jsp.StructFromExampleFile(file)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to parse file %q: %w", file, err)
 			}
 
-			results = append(results, js)
+			results = append(results, result)
 		}
 	}
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 
@@ -65,12 +64,7 @@ func genStructs(ctx *cli.Context) error {
 	results := []*jsonstruct.JSONStruct{}
 
 	if isStdin() {
-		contents, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("error reading from stdin: %w", err)
-		}
-
-		result, err := jsp.StructFromBytes("stdin", contents)
+		result, err := jsp.StructFromReader("stdin", os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed to parse stdin: %w", err)
 		}

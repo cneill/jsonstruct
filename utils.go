@@ -15,7 +15,7 @@ import (
 func GetNormalizedName(input string) string {
 	var cleaned strings.Builder
 
-	// remove garbage characters
+	// remove garbage characters, replace separators with ' '
 	for _, r := range input {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
 			cleaned.WriteRune(r)
@@ -24,6 +24,7 @@ func GetNormalizedName(input string) string {
 		}
 	}
 
+	// look for initialisms to capitalize
 	words := strings.Split(cleaned.String(), " ")
 	temp := []string{}
 

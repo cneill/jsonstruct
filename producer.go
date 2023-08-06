@@ -3,6 +3,7 @@ package jsonstruct
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 )
@@ -16,6 +17,7 @@ type Producer struct {
 	// Name will override the name of the main struct.
 	Name string
 	// Inline will use inline structs instead of creating new types for each JSON object detected.
+	Inline bool
 }
 
 var skippedExamples = map[reflect.Kind]bool{
@@ -95,6 +97,16 @@ func (p *Producer) StructFromRaw(name string, raw Raw) (*JSONStruct, error) {
 	return p.FormatStruct(js), nil
 }
 
+// StructFromReader reads the contents of 'r' and returns a *JSONStruct, or error.
+func (p *Producer) StructFromReader(name string, r io.Reader) (*JSONStruct, error) {
+	contents, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read contents of %q: %w", name, err)
+	}
+
+	return p.StructFromBytes(name, contents)
+}
+
 // StructFromBytes unmarshals either a JSON object or an array of JSON objects into a Raw object, and returns a JSONStruct.
 func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, error) {
 	var (
@@ -133,12 +145,7 @@ func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) 
 		name = p.Name
 	}
 
-	result, err := p.StructFromBytes(name, contents)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return p.StructFromBytes(name, contents)
 }
 
 // StructFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein.
@@ -219,6 +226,7 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 	return js, nil
 }
 
+// FormatStruct formats a JSONStruct based on the options configured on the Producer.
 func (p *Producer) FormatStruct(js *JSONStruct) *JSONStruct {
 	if p.SortFields {
 		js.Sort()

@@ -10,12 +10,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func isStdin() bool {
-	stat, _ := os.Stdin.Stat()
-
-	return (stat.Mode() & os.ModeCharDevice) == 0
-}
-
 func run() error {
 	app := &cli.App{
 		Name:        "jsonstruct",
@@ -47,11 +41,13 @@ func run() error {
 		},
 	}
 
-	if err := app.Run(os.Args); err != nil {
-		return fmt.Errorf("ERROR: %w", err)
-	}
+	return app.Run(os.Args)
+}
 
-	return nil
+func isStdin() bool {
+	stat, _ := os.Stdin.Stat()
+
+	return (stat.Mode() & os.ModeCharDevice) == 0
 }
 
 func genStructs(ctx *cli.Context) error {
@@ -82,12 +78,7 @@ func genStructs(ctx *cli.Context) error {
 	}
 
 	for _, result := range results {
-		formatted, err := jsonstruct.GoFmt(result)
-		if err != nil {
-			fmt.Printf("%s\n", result.String())
-		} else {
-			fmt.Println(formatted)
-		}
+		fmt.Println(result.String())
 	}
 
 	return nil
@@ -95,6 +86,6 @@ func genStructs(ctx *cli.Context) error {
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("%v\n", err)
+		log.Fatalf("ERROR: %v\n", err)
 	}
 }

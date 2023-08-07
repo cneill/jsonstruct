@@ -31,7 +31,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-var commonInitialisms = map[string]bool{
+
+// CommonInitialisms contains the words that are recognized by "go lint" as initials needing capitalization.
+var CommonInitialisms = map[string]bool{
 	"ACL":   true,
 	"API":   true,
 	"ASCII": true,

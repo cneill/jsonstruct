@@ -5,9 +5,6 @@ import (
 	"reflect"
 )
 
-// Raw is a convenience type for map[string]any which is the default raw message type from encoding/json.
-type Raw map[string]any
-
 // JSONStruct is a struct produced from examples.
 type JSONStruct struct {
 	Name   string
@@ -16,11 +13,7 @@ type JSONStruct struct {
 
 func (j *JSONStruct) String() string {
 	result := fmt.Sprintf("type %s struct {\n", j.Name)
-
-	for _, field := range j.Fields {
-		result += "\t" + field.String() + "\n"
-	}
-
+	result += j.Fields.String()
 	result += "}"
 
 	for _, field := range j.Fields {
@@ -37,6 +30,7 @@ func (j *JSONStruct) Equals(compare *JSONStruct) bool {
 	return reflect.DeepEqual(j, compare)
 }
 
+// Sort sorts fields and the fields of their children by name in alphabetical order.
 func (j *JSONStruct) Sort() {
 	j.Fields.Sort()
 

@@ -3,8 +3,6 @@ package jsonstruct
 import (
 	"fmt"
 	"math"
-	"os"
-	"os/exec"
 	"path"
 	"reflect"
 	"strings"
@@ -30,7 +28,7 @@ func GetNormalizedName(input string) string {
 
 	for _, word := range words {
 		tmpWord := strings.ToUpper(word)
-		if _, ok := commonInitialisms[tmpWord]; ok {
+		if _, ok := CommonInitialisms[tmpWord]; ok {
 			word = strings.ToUpper(tmpWord)
 		}
 
@@ -43,8 +41,9 @@ func GetNormalizedName(input string) string {
 	return result
 }
 
-// GetSliceKind takes a slice object and returns the Kind of slice represented - defaults to reflect.String if unknown.
-// TODO: handle cases where an array contains more than one type (e.g. ["a", "b", ["c"]])
+// GetSliceKind takes any slice object and returns the Kind of elements within the slice. If all elements are of the
+// same Kind (as determined by 'fuzzyKind' below), it returns that Kind. If the slice contains multiple Kinds, this
+// function returns reflect.Invalid.
 func GetSliceKind(value any) (reflect.Kind, error) {
 	var (
 		typeOf = reflect.TypeOf(value)
@@ -57,34 +56,46 @@ func GetSliceKind(value any) (reflect.Kind, error) {
 
 	valOf := reflect.ValueOf(value)
 
+	// If we have no elements in this slice, just return Invalid and render it as json.RawMessage later.
 	if valOf.Len() == 0 {
-		fmt.Fprintf(os.Stderr, "Got an empty array, defaulting to string")
-
-		return reflect.String, nil
+		return reflect.Invalid, nil
 	}
 
-	elemVal := valOf.Index(0)
-	iface := elemVal.Interface()
+	var firstKind reflect.Kind
 
-	switch iface.(type) {
+	for i := 0; i < valOf.Len(); i++ {
+		elemVal := valOf.Index(i)
+		iface := elemVal.Interface()
+		fuzzy := fuzzyKind(iface)
+
+		if i == 0 {
+			firstKind = fuzzy
+		} else if firstKind != reflect.Invalid && fuzzy != firstKind {
+			// We have a slice with multiple Kinds, so return Invalid and render it as json.RawMessage later.
+			return reflect.Invalid, nil
+		}
+	}
+
+	return firstKind, nil
+}
+
+func fuzzyKind(input any) reflect.Kind {
+	switch input.(type) {
 	case int, int8, int16, int32, int64:
-		return reflect.Int64, nil
+		return reflect.Int64
 	case float32, float64:
-		return reflect.Float64, nil
+		return reflect.Float64
 	case string:
-		return reflect.String, nil
+		return reflect.String
 	}
 
-	elemType := reflect.TypeOf(iface)
-	elemKind := elemType.Kind()
+	elemType := reflect.TypeOf(input)
 
-	if elemKind == reflect.Map {
-		return reflect.Struct, nil
+	if elemKind := elemType.Kind(); elemKind == reflect.Map {
+		return reflect.Struct
 	}
 
-	fmt.Fprintf(os.Stderr, "Not sure what to do with an array of %s... defaulting to string\n", elemKind)
-
-	return reflect.String, nil
+	return reflect.Invalid
 }
 
 // GetFieldKind takes any object and returns the Kind represented.
@@ -114,15 +125,15 @@ func GetFieldKind(value any) reflect.Kind {
 // NameFromInputFile strips the file path and extension, using GetNormalizedName to return a struct name.
 func NameFromInputFile(inputFile string) string {
 	_, fName := path.Split(inputFile)
-	ext := path.Ext(fName)
-	name := strings.TrimSuffix(inputFile, ext)
-	name = GetNormalizedName(name)
+	name := strings.TrimSuffix(inputFile, path.Ext(fName))
 
-	return name
+	return GetNormalizedName(name)
 }
 
-// CanBeInt64 checks whether a float value can be converted into an int64 without a loss of precision. Helps find e.g. IDs,
-// counts, and so on.
+// CanBeInt64 checks whether a float value can be converted into an int64 without a loss of precision. Helps find e.g.
+// IDs, counts, and so on.
+// TODO: come up with a better way of finding e.g. 1.0 - currently, truncating 1.0 will satisfy this and result in an
+// int64 type when it should be a float64.
 func CanBeInt64(f float64) bool {
 	return f > float64(math.MinInt64) && f < float64(math.MaxInt64) && f == math.Trunc(f)
 }
@@ -140,20 +151,44 @@ func getExampleString(rawValue any) string {
 
 	switch val.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		result = fmt.Sprintf("%d", rawValue.(int64))
+		intValue, ok := rawValue.(int64)
+		if !ok {
+			return ""
+		}
+
+		result = fmt.Sprintf("%d", intValue)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		result = fmt.Sprintf("%d", rawValue.(uint64))
+		uintValue, ok := rawValue.(uint64)
+		if !ok {
+			return ""
+		}
+
+		result = fmt.Sprintf("%d", uintValue)
 	case reflect.Bool:
-		result = fmt.Sprintf("%t", rawValue.(bool))
+		boolValue, ok := rawValue.(bool)
+		if !ok {
+			return ""
+		}
+
+		result = fmt.Sprintf("%t", boolValue)
 	case reflect.Float32, reflect.Float64:
-		f := rawValue.(float64)
-		if CanBeInt64(f) {
-			result = fmt.Sprintf("%d", int64(f))
+		floatValue, ok := rawValue.(float64)
+		if !ok {
+			return ""
+		}
+
+		if CanBeInt64(floatValue) {
+			result = fmt.Sprintf("%d", int64(floatValue))
 		} else {
-			result = fmt.Sprintf("%.2f", rawValue.(float64))
+			result = fmt.Sprintf("%.2f", floatValue)
 		}
 	case reflect.String:
-		result = fmt.Sprintf("\"%s\"", rawValue.(string))
+		strValue, ok := rawValue.(string)
+		if !ok {
+			return ""
+		}
+
+		result = fmt.Sprintf("\"%s\"", strValue)
 	case reflect.Slice:
 		result = getSliceExampleString(rawValue)
 	case reflect.Map:
@@ -190,36 +225,4 @@ func getSliceExampleString(rawValue any) string {
 	result += "]"
 
 	return result
-}
-
-func GoFmt(structs ...*JSONStruct) (string, error) {
-	packagePrefix := "package temp\n"
-
-	goFmt, err := exec.LookPath("gofmt")
-	if err != nil {
-		return "", fmt.Errorf("failed to find 'gofmt' binary: %w", err)
-	}
-
-	contents := packagePrefix
-	for _, js := range structs {
-		contents += js.String() + "\n"
-	}
-
-	r := strings.NewReader(contents)
-
-	cmd := &exec.Cmd{
-		Path:  goFmt,
-		Stdin: r,
-	}
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s\n", output)
-
-		return "", fmt.Errorf("failed to execute 'gofmt': %w", err)
-	}
-
-	outputStr := strings.TrimSpace(strings.TrimPrefix(string(output), packagePrefix))
-
-	return outputStr, nil
 }

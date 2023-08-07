@@ -14,11 +14,15 @@ type Producer struct {
 	SortFields bool
 	// ValueComments will include a comment with every struct field with the value(s) received from the examples provided.
 	ValueComments bool
-	// Name will override the name of the main struct.
-	Name string
 	// Inline will use inline structs instead of creating new types for each JSON object detected.
 	Inline bool
+	// Name will override the name of the main struct.
+	Name string
+	// TODO: allow customization of intialisms
 }
+
+// Raw is a convenience type for map[string]any which is the default raw message type from encoding/json.
+type Raw map[string]any
 
 var skippedExamples = map[reflect.Kind]bool{
 	reflect.Invalid: true,
@@ -30,26 +34,27 @@ var skippedExamples = map[reflect.Kind]bool{
 func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 	results := Fields{}
 
-	for k, v := range input {
-		kind := GetFieldKind(v)
+	for key, val := range input {
+		kind := GetFieldKind(val)
 		// TODO: mark the incorrect float64s int64s here and deal with their values?
 		field := Field{
-			RawName:  k,
-			RawValue: v,
-			Name:     GetNormalizedName(k),
-			Value:    reflect.ValueOf(v),
+			RawName:  key,
+			RawValue: val,
+			Name:     GetNormalizedName(key),
+			Value:    reflect.ValueOf(val),
 			Kind:     kind,
 		}
 
 		// TODO: figure out a smarter way to deal with this...
 		if _, ok := skippedExamples[kind]; !ok && p.ValueComments {
 			if exStr := field.ExampleString(); exStr != "" {
-				field.Comments = []string{fmt.Sprintf("Ex: %s", exStr)}
+				// field.Comments = []string{fmt.Sprintf("Ex: %s", exStr)}
+				field.Comment = fmt.Sprintf("Ex: %s", exStr)
 			}
 		}
 
 		if kind == reflect.Slice {
-			skind, err := GetSliceKind(v)
+			skind, err := GetSliceKind(val)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get slice kind: %w", err)
 			}
@@ -57,10 +62,10 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 			field.SliceKind = skind
 			// TODO: figure out how to better deal with plurals here
 			if field.SliceKind == reflect.Struct {
-				field.StructType = GetNormalizedName(k)
+				field.StructType = GetNormalizedName(key)
 				// what we actually have here is a slice of struct, so we need to step through each of the provided objects and
 				// aggregate the fields into one object
-				child, err := p.StructFromSlice(field.StructType, v)
+				child, err := p.StructFromSlice(field.StructType, val)
 				if err != nil {
 					return nil, err
 				}
@@ -68,8 +73,8 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 				field.Child = child
 			}
 		} else if kind == reflect.Map {
-			field.StructType = GetNormalizedName(k)
-			child, err := p.StructFromRaw(field.StructType, Raw(v.(map[string]any)))
+			field.StructType = GetNormalizedName(key)
+			child, err := p.structFromRaw(field.StructType, Raw(val.(map[string]any)))
 			if err != nil {
 				return nil, err
 			}
@@ -82,8 +87,8 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 	return results, nil
 }
 
-// StructFromRaw returns a JSONStruct constructed from the provided name and Raw object.
-func (p *Producer) StructFromRaw(name string, raw Raw) (*JSONStruct, error) {
+// structFromRaw returns a JSONStruct constructed from the provided name and Raw object.
+func (p *Producer) structFromRaw(name string, raw Raw) (*JSONStruct, error) {
 	fields, err := p.GetFieldsFromRaw(raw)
 	if err != nil {
 		return nil, err
@@ -117,7 +122,7 @@ func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, e
 	raw := Raw{}
 	// TODO: check for "[" or "{"? don't do this
 	if err := json.Unmarshal(contents, &raw); err == nil {
-		result, produceErr = p.StructFromRaw(name, raw)
+		result, produceErr = p.structFromRaw(name, raw)
 	} else {
 		raws := []Raw{}
 		if err := json.Unmarshal(contents, &raws); err != nil {
@@ -179,7 +184,7 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 			return nil, fmt.Errorf("got a slice item that was not a map[string]interface - not a struct")
 		}
 
-		js, err := p.StructFromRaw(name, raw)
+		js, err := p.structFromRaw(name, raw)
 		if err != nil {
 			return nil, err
 		}

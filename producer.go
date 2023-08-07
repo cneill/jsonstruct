@@ -124,8 +124,8 @@ func (p *Producer) StructsFromReader(name string, r io.Reader) ([]*JSONStruct, e
 		}
 
 		var (
-			err        error
 			tempResult *JSONStruct
+			err        error
 		)
 
 		switch jsonRaw[0] {

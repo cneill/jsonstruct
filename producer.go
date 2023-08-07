@@ -1,7 +1,9 @@
 package jsonstruct
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -65,7 +67,7 @@ func (p *Producer) GetFieldsFromRaw(input Raw) (Fields, error) {
 				field.StructType = GetNormalizedName(key)
 				// what we actually have here is a slice of struct, so we need to step through each of the provided objects and
 				// aggregate the fields into one object
-				child, err := p.StructFromSlice(field.StructType, val)
+				child, err := p.structFromSlice(field.StructType, val)
 				if err != nil {
 					return nil, err
 				}
@@ -102,59 +104,98 @@ func (p *Producer) structFromRaw(name string, raw Raw) (*JSONStruct, error) {
 	return p.FormatStruct(js), nil
 }
 
-// StructFromReader reads the contents of 'r' and returns a *JSONStruct, or error.
-func (p *Producer) StructFromReader(name string, r io.Reader) (*JSONStruct, error) {
-	contents, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read contents of %q: %w", name, err)
-	}
+// StructsFromReader reads the contents of 'r' and returns any structs (or arrays of structs) it can derive from them.
+func (p *Producer) StructsFromReader(name string, r io.Reader) ([]*JSONStruct, error) {
+	results := []*JSONStruct{}
 
-	return p.StructFromBytes(name, contents)
-}
+	decoder := json.NewDecoder(r)
+	decoder.UseNumber()
 
-// StructFromBytes unmarshals either a JSON object or an array of JSON objects into a Raw object, and returns a JSONStruct.
-func (p *Producer) StructFromBytes(name string, contents []byte) (*JSONStruct, error) {
-	var (
-		result     *JSONStruct
-		produceErr error
-	)
+	for i := 0; ; i++ {
+		var (
+			indexName = fmt.Sprintf("%s%d", name, i)
+			jsonRaw   = json.RawMessage{}
+		)
 
-	raw := Raw{}
-	// TODO: check for "[" or "{"? don't do this
-	if err := json.Unmarshal(contents, &raw); err == nil {
-		result, produceErr = p.structFromRaw(name, raw)
-	} else {
-		raws := []Raw{}
-		if err := json.Unmarshal(contents, &raws); err != nil {
-			return nil, fmt.Errorf("failed to parse as either object or array of objects: %w", err)
+		if err := decoder.Decode(&jsonRaw); errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("invalid JSON: %w", err)
 		}
-		result, produceErr = p.StructFromSlice(name, raws)
+
+		var (
+			err        error
+			tempResult *JSONStruct
+		)
+
+		switch jsonRaw[0] {
+		case '{':
+			tempResult, err = p.parseObject(indexName, jsonRaw)
+		case '[':
+			tempResult, err = p.parseArray(indexName, jsonRaw)
+		default:
+			return nil, fmt.Errorf("expecting either array or object, invalid character '%c' looking for beginning of value", jsonRaw[0])
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, tempResult)
 	}
 
-	if produceErr != nil {
-		return nil, fmt.Errorf("failed to produce a struct: %w", produceErr)
-	}
-
-	return p.FormatStruct(result), nil
+	return results, nil
 }
 
-// StructFromExampleFile reads "inputFile", deriving a struct name from the file name and returning a JSONStruct.
-func (p *Producer) StructFromExampleFile(inputFile string) (*JSONStruct, error) {
-	contents, err := os.ReadFile(inputFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
+func (p *Producer) parseObject(name string, input json.RawMessage) (*JSONStruct, error) {
+	raw := Raw{}
+	if err := json.Unmarshal(input, &raw); err != nil {
+		return nil, fmt.Errorf("failed to parse object: %w", err)
 	}
 
-	name := NameFromInputFile(inputFile)
-	if p.Name != "" {
-		name = p.Name
-	}
-
-	return p.StructFromBytes(name, contents)
+	return p.structFromRaw(name, raw)
 }
 
-// StructFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein.
-func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) {
+func (p *Producer) parseArray(name string, input json.RawMessage) (*JSONStruct, error) {
+	raws := []Raw{}
+	if err := json.Unmarshal(input, &raws); err != nil {
+		return nil, fmt.Errorf("failed to parse array: %w", err)
+	}
+
+	return p.structFromSlice(name, raws)
+}
+
+func (p *Producer) StructsFromBytes(name string, contents []byte) ([]*JSONStruct, error) {
+	return p.StructsFromReader(name, bytes.NewReader(contents))
+}
+
+func (p *Producer) StructsFromExampleFiles(inputFiles ...string) ([]*JSONStruct, error) {
+	results := []*JSONStruct{}
+
+	for _, inputFile := range inputFiles {
+		contents, err := os.ReadFile(inputFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file %q: %w", inputFile, err)
+		}
+
+		name := NameFromInputFile(inputFile)
+		if p.Name != "" {
+			name = p.Name
+		}
+
+		structs, err := p.StructsFromBytes(name, contents)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse file %q: %w", inputFile, err)
+		}
+
+		results = append(results, structs...)
+	}
+
+	return results, nil
+}
+
+// structFromSlice looks at a slice of some type and returns a JSONStruct based on the values contained therein.
+func (p *Producer) structFromSlice(name string, value any) (*JSONStruct, error) {
 	var (
 		typeOf = reflect.TypeOf(value)
 		kind   = typeOf.Kind()
@@ -181,7 +222,7 @@ func (p *Producer) StructFromSlice(name string, value any) (*JSONStruct, error) 
 		} else if v, ok := iface.(Raw); ok {
 			raw = v
 		} else {
-			return nil, fmt.Errorf("got a slice item that was not a map[string]interface - not a struct")
+			return nil, fmt.Errorf("got a slice item that was not a map[string]interface - not a struct (%T)", iface)
 		}
 
 		js, err := p.structFromRaw(name, raw)

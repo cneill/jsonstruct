@@ -69,25 +69,25 @@ The above JSON object Will produce this output:
 
 ```golang
 type Test struct {
+        StringArray  []string   `json:"string_array"`
+        BlahBlahBlah string     `json:"blahBlahBlah"`
+        Nothing      string     `json:"nothing"`
+        Currency     string     `json:"currency"`
         Amount       float64    `json:"amount"`
+        Map          *Map       `json:"map"`
         Array        []float64  `json:"array"`
         CamelKey     string     `json:"CamelKey"`
-        BlahBlahBlah string     `json:"blahBlahBlah"`
         Structs      []*Structs `json:"structs"`
-        Currency     string     `json:"currency"`
-        Map          *Map       `json:"map"`
-        StringArray  []string   `json:"string_array"`
-        Nothing      string     `json:"nothing"`
-}
-
-type Structs struct {
-        DifferentStuff string `json:"differentStuff,omitempty"`
-        Stuff          string `json:"stuff"`
 }
 
 type Map struct {
         Something string `json:"something"`
         This      bool   `json:"this"`
+}
+
+type Structs struct {
+        Stuff          string `json:"stuff"`
+        DifferentStuff string `json:"differentStuff,omitempty"`
 }
 ```
 
@@ -114,8 +114,8 @@ type Map struct {
 
 ```golang
 type ArrayTest struct {
-        Stuff          *json.RawMessage `json:"stuff"`
-        DifferentStuff string           `json:"differentStuff,omitempty"`
+	Stuff          *json.RawMessage `json:"stuff"`
+	DifferentStuff string           `json:"differentStuff,omitempty"`
 }
 ```
 
@@ -123,11 +123,16 @@ type ArrayTest struct {
 
 * When an array of JSON objects is detected, any keys that are provided in some objects but not others
   will get the `,omitempty` flag
-* All numbers will be treated as `float64` - this is how Go interprets all JSON numbers
+* Tries to detect `float64` and `int64`, but there's a bug where floats like `1.0` will be treated as
+  ints (floats like `1.2` will be correctly detected as such)
 * When the same field is detected in multiple objects in a JSON array with different value types, the
   Go type will be `*json.RawMessage`, which will contain the raw bytes of the field to allow for
   different types
-* Defaults to a string type when JSON `null` is provided
+* Defaults to a `*json.RawMessage` type when:
+    * JSON `null` is provided
+    * There are multiple types in e.g. an array
+    * There is an empty array
+* Can take input from either files passed in as CLI args or STDIN. Can take a stream of objects / arrays of objects.
 
 ## TODO
 

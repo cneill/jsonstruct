@@ -60,25 +60,22 @@ func genStructs(ctx *cli.Context) error {
 	results := []*jsonstruct.JSONStruct{}
 
 	if isStdin() {
-		result, err := jsp.StructFromReader("stdin", os.Stdin)
+		structs, err := jsp.StructsFromReader("Stdin", os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed to parse stdin: %w", err)
 		}
 
-		results = append(results, result)
+		results = append(results, structs...)
 	} else {
-		for _, file := range ctx.Args().Slice() {
-			result, err := jsp.StructFromExampleFile(file)
-			if err != nil {
-				return fmt.Errorf("failed to parse file %q: %w", file, err)
-			}
-
-			results = append(results, result)
+		structs, err := jsp.StructsFromExampleFiles(ctx.Args().Slice()...)
+		if err != nil {
+			return err
 		}
+		results = append(results, structs...)
 	}
 
 	for _, result := range results {
-		fmt.Println(result.String())
+		fmt.Println(result.String() + "\n")
 	}
 
 	return nil

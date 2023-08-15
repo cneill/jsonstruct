@@ -1,0 +1,49 @@
+{
+  "name": "test",
+  "value": "value",
+  "poop": 1,
+  "poop2": 0.5,
+  "array": ["test", "test2", "test3", "test4"],
+  "garbage_array": ["test", 1, 5.0],
+  "object": {
+    "nested": 1,
+    "nested2": 1.2,
+    "nested3": "string"
+  },
+  "object2": {
+    "nested4": 1,
+    "nested5": 2.2,
+    "nested6": "string2"
+  },
+  "object3": {
+    "nested4": 1,
+    "nested5": 2.2,
+    "nested6": "string2"
+  },
+  "im_a_jerk": "test"
+}
+
+{
+    "struct2": "test",
+    "struct2_int": 1,
+    "struct2_float": 1.5
+}
+
+
+[
+    {
+        "array": 1,
+        "array1": "string"
+    },
+    {
+        "array": 2,
+        "array1": "string2"
+    },
+    {
+        "array": "OH NO",
+        "array1": "string"
+    },
+    {
+        "array1": "string"
+    }
+]

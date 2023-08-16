@@ -12,14 +12,20 @@ import (
 )
 
 var testObject = `{
-	"test": "test",
+	"test": "testString",
 	"Number": 1.5432,
 	"NumberTwo": 1.0,
 	"numberThree": 1,
 	"NumberFour": 69420,
 	"Nested": {
 		"test": "ohno"
-	}
+	},
+	"Array": [
+		1,
+		2,
+		3
+	],
+	"test_string_two": "testString2"
 }`
 
 var testArray = `[
@@ -176,9 +182,11 @@ func (j *JSONStructs) UnmarshalJSON(data []byte) error {
 }
 
 type Field struct {
-	Name string
-	Type string
-	Tag  string
+	Name     string
+	Type     string
+	Tag      string
+	StrValue string
+	RawValue any
 }
 
 type Fields []*Field
@@ -241,14 +249,14 @@ func run() error {
 	h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	l = slog.New(h)
 
-	j, err := parseBytes([]byte(testObject))
-	if err != nil {
-		return err
-	}
+	// j, err := parseBytes([]byte(testObject))
+	// if err != nil {
+	// 	return err
+	// }
 
-	for _, result := range j {
-		l.Debug(fmt.Sprintf("%+v\n", result))
-	}
+	// for _, result := range j {
+	// 	l.Debug(fmt.Sprintf("%+v\n", result))
+	// }
 
 	// j, err = parseBytes([]byte(testArray))
 	// if err != nil {
@@ -259,6 +267,22 @@ func run() error {
 	// 	l.Debug(fmt.Sprintf("%+v\n", result))
 	// }
 
+	decoder := json.NewDecoder(strings.NewReader(testObject))
+	decoder.UseNumber()
+
+	op := objectParser{d: decoder}
+	js, err := op.parseObject()
+	if err != nil {
+		return fmt.Errorf("parse error: %w", err)
+	}
+
+	fmt.Printf("%+v\n", js)
+
+	for _, field := range js.Fields {
+		fmt.Printf("%+v\n", field)
+		fmt.Printf("RAW VAL: %+v\n", field.RawValue)
+	}
+
 	return nil
 }
 
@@ -267,3 +291,12 @@ func main() {
 		panic(err)
 	}
 }
+
+/*
+- take the decoder when it's on a JSON object
+- parse name
+- parse value
+	- if token is delimeter, parse appropriate object/array and we now have a field, e.g. "key": [1, 2, 3]
+	- if token is other, we now have a field, e.g. "key": "test"
+- repeat ^ until !decoder.More()
+*/

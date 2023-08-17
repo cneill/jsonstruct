@@ -1,4 +1,4 @@
-package main
+package jsonstruct
 
 import (
 	"fmt"

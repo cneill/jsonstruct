@@ -1,56 +1,16 @@
-package main
+package jsonstruct
 
-import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"log/slog"
-	"os"
-	"strings"
-)
-
-var testObject = `{
-	"test": "testString",
-	"Number": 1.5432,
-	"NumberTwo": 1.0,
-	"numberThree": 1,
-	"NumberFour": 69420,
-	"Nested": {
-		"test": "ohno"
-	},
-	"Array": [
-		1,
-		2,
-		3
-	],
-	"test_string_two": "testString2"
-}`
-
-var testArray = `[
-	{
-		"test": "test"
-	},
-	{
-		"test": "test2"
-	}
-]`
-
-var (
-	l *slog.Logger
-
-	ErrDataEmpty = errors.New("data provided was empty")
-	ErrNotObject = errors.New("received data was not a JSON object")
-	ErrNotArray  = errors.New("received data was not a JSON array")
-)
-
+// JSONStruct contains the raw information about a JSON object to be rendered as a Go struct.
 type JSONStruct struct {
 	Name   string
 	Fields Fields
 }
 
+// JSONStructs is a convenience type for a slice of JSONStruct structs.
+type JSONStructs []*JSONStruct
+
 // UnmarshalJSON takes one JSON object's bytes as input and marshals it into a JSONStruct object.
+/*
 func (j *JSONStruct) UnmarshalJSON(data []byte) error {
 	if len(data) == 0 {
 		return ErrDataEmpty
@@ -127,26 +87,9 @@ func (j *JSONStruct) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+*/
 
-func getKey(decoder *json.Decoder) (string, error) {
-	t, err := decoder.Token()
-	if err != nil {
-		return "", fmt.Errorf("failed to parse object key: %w", err)
-	}
-
-	val, ok := t.(string)
-	if !ok {
-		return "", fmt.Errorf("object key was not a string")
-	}
-
-	return val, nil
-}
-
-func handleArray(decoder *json.Decoder) {
-}
-
-type JSONStructs []*JSONStruct
-
+/*
 func (j *JSONStructs) UnmarshalJSON(data []byte) error {
 	results := JSONStructs{}
 
@@ -180,123 +123,4 @@ func (j *JSONStructs) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
-
-type Field struct {
-	Name     string
-	Type     string
-	Tag      string
-	StrValue string
-	RawValue any
-}
-
-type Fields []*Field
-
-type Formatter struct{}
-
-func parseBytes(data []byte) (JSONStructs, error) {
-	if len(data) == 0 {
-		l.Debug("no content")
-
-		return nil, nil
-	}
-
-	switch data[0] {
-	case '{':
-		l.Debug("got an object")
-
-		result, err := parseObjectBytes(data)
-		if err != nil {
-			return nil, err
-		}
-
-		return JSONStructs{result}, nil
-	case '[':
-		l.Debug("got an array")
-
-		return parseArrayBytes(data)
-	default:
-		return nil, fmt.Errorf("invalid first character of JSON data")
-	}
-}
-
-func parseObjectBytes(data []byte) (*JSONStruct, error) {
-	result := &JSONStruct{}
-
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON object: %w", err)
-	}
-
-	return result, nil
-}
-
-func parseArrayBytes(data []byte) ([]*JSONStruct, error) {
-	results := JSONStructs{}
-
-	if err := json.Unmarshal(data, &results); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON array: %w", err)
-	}
-
-	return results, nil
-}
-
-/*
-- make sure the JSON is well-formed
-- parse it into a stably-ordered map OR a slice of maps
--
-*/
-
-func run() error {
-	h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
-	l = slog.New(h)
-
-	// j, err := parseBytes([]byte(testObject))
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for _, result := range j {
-	// 	l.Debug(fmt.Sprintf("%+v\n", result))
-	// }
-
-	// j, err = parseBytes([]byte(testArray))
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for _, result := range j {
-	// 	l.Debug(fmt.Sprintf("%+v\n", result))
-	// }
-
-	decoder := json.NewDecoder(strings.NewReader(testObject))
-	decoder.UseNumber()
-
-	op := objectParser{d: decoder}
-	js, err := op.parseObject()
-	if err != nil {
-		return fmt.Errorf("parse error: %w", err)
-	}
-
-	fmt.Printf("%+v\n", js)
-
-	for _, field := range js.Fields {
-		fmt.Printf("%+v\n", field)
-		fmt.Printf("RAW VAL: %+v\n", field.RawValue)
-	}
-
-	return nil
-}
-
-func main() {
-	if err := run(); err != nil {
-		panic(err)
-	}
-}
-
-/*
-- take the decoder when it's on a JSON object
-- parse name
-- parse value
-	- if token is delimeter, parse appropriate object/array and we now have a field, e.g. "key": [1, 2, 3]
-	- if token is other, we now have a field, e.g. "key": "test"
-- repeat ^ until !decoder.More()
 */

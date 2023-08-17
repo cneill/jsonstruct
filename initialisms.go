@@ -1,4 +1,4 @@
-package main
+package jsonstruct
 
 // taken from github.com/golang/lint (golint) - https://github.com/golang/lint/blob/738671d3881b9731cc63024d5d88cf28db875626/lint.go#L770-L809
 // License:

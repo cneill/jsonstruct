@@ -39,9 +39,14 @@ func run() error {
 				Usage:   "sort the fields in alphabetical order; default behavior is to mirror input",
 			},
 			&cli.BoolFlag{
-				Name:    "inline",
+				Name:    "inline-structs",
 				Aliases: []string{"i"},
 				Usage:   "use inline structs instead of creating different types for each object",
+			},
+			&cli.BoolFlag{
+				Name:    "print-filenames",
+				Aliases: []string{"f"},
+				Usage:   "print the filename above the structs defined within",
 			},
 			&cli.BoolFlag{
 				Name:  "debug",
@@ -75,6 +80,7 @@ func genStructs(ctx *cli.Context) error {
 	formatter, err := jsonstruct.NewFormatter(&jsonstruct.FormatterOptions{
 		SortFields:    ctx.Bool("sort-fields"),
 		ValueComments: ctx.Bool("value-comments"),
+		InlineStructs: ctx.Bool("inline-structs"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set up formatter: %w", err)
@@ -105,11 +111,16 @@ func genStructs(ctx *cli.Context) error {
 			return fmt.Errorf("failed to parse input %q: %w", input.Name(), err)
 		}
 
-		fmt.Println(input.Name())
+		if ctx.Bool("print-filename") {
+			fmt.Println(input.Name())
+		}
 
-		if err := formatter.Format(results...); err != nil {
+		result, err := formatter.FormatString(results...)
+		if err != nil {
 			return fmt.Errorf("failed to format struct(s) from %q: %w", input.Name(), err)
 		}
+
+		fmt.Printf("%s", result)
 	}
 
 	return nil

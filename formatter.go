@@ -2,17 +2,8 @@ package jsonstruct
 
 import (
 	"fmt"
-	"os"
-	"text/template"
+	"strings"
 )
-
-var structTemplate = template.Must(template.New("struct").Parse(
-	`type {{ .Name }} struct {
-{{- range .Fields }}
-{{ printf "\t%s\t%s\t%s" .Name .Type .Tag }}
-{{- end }}
-}
-`))
 
 // FormatterOptions defines how the Formatter will produce its output.
 type FormatterOptions struct {
@@ -22,6 +13,9 @@ type FormatterOptions struct {
 	// ValueComments annotates the produced structs with "Example" comments including the values originally passed in
 	// for this field.
 	ValueComments bool
+
+	// InlineStructs causes objects within the main object to be rendered inline rather than getting their own types.
+	InlineStructs bool
 }
 
 // OK ensures that the options passed in are valid.
@@ -47,16 +41,89 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 	return f, nil
 }
 
-func (f *Formatter) Format(input ...*JSONStruct) error {
+func (f *Formatter) FormatString(input ...JSONStruct) (string, error) {
+	result := ""
+
 	for _, js := range input {
 		if f.SortFields {
 			js.Fields.SortAlphabetically()
 		}
 
-		if err := structTemplate.Execute(os.Stdout, js); err != nil {
-			return fmt.Errorf("failed to format struct with name %q: %w", js.Name, err)
+		result += fmt.Sprintf("type %s struct {\n\t%s\n}", js.Name, strings.Join(f.fieldStrings(js.Fields...), "\n\t"))
+
+		for _, field := range js.Fields {
+			if !f.InlineStructs && field.IsStruct() {
+				formatted, err := f.FormatString(field.GetStruct())
+				if err != nil {
+					return "", fmt.Errorf("failed to format child struct %q: %w", field.Name(), err)
+				}
+
+				result += fmt.Sprintf("\n\n%s", formatted)
+			}
 		}
 	}
 
-	return nil
+	return result, nil
+}
+
+func (f *Formatter) fieldStrings(fields ...Field) []string {
+	var (
+		results = []string{}
+		buckets = f.fieldBuckets(fields...)
+	)
+
+	// for each bucket, set field spacing based on longest name/type/tag of its neighbors
+	for _, bucket := range buckets {
+		var longestName, longestType, longestTag int
+
+		for _, field := range bucket {
+			if name := field.Name(); len(name) > longestName {
+				longestName = len(name) + 1
+			}
+
+			if typ := field.Type(); len(typ) > longestType {
+				longestType = len(typ) + 1
+			}
+
+			if tag := field.Tag(); len(tag) > longestTag {
+				longestTag = len(tag) + 1
+			}
+		}
+
+		for _, field := range bucket {
+			if f.ValueComments {
+				fmtString := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%s", longestName, longestType, longestTag)
+				results = append(results, fmt.Sprintf(fmtString, field.Name(), field.Type(), field.Tag(), field.Comment()))
+
+				continue
+			}
+
+			fmtString := fmt.Sprintf("%%-%ds%%-%ds%%s", longestName, longestType)
+			results = append(results, fmt.Sprintf(fmtString, field.Name(), field.Type(), field.Tag()))
+		}
+	}
+
+	return results
+}
+
+func (f *Formatter) fieldBuckets(fields ...Field) [][]Field {
+	// TODO: handle the case of comments on previous lines when that's a possibility
+	if !f.InlineStructs {
+		return [][]Field{fields}
+	}
+
+	buckets := [][]Field{}
+	bucket := []Field{}
+
+	for _, field := range fields {
+		if field.IsStruct() {
+			bucket = append(bucket, field)
+			buckets = append(buckets, bucket)
+			bucket = []Field{}
+		} else {
+			bucket = append(bucket, field)
+		}
+	}
+
+	return buckets
 }

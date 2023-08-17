@@ -1,7 +1,6 @@
 package jsonstruct
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -36,25 +35,4 @@ func GetGoName(input string) string {
 	result = strings.ReplaceAll(result, " ", "")
 
 	return result
-}
-
-func stringValue(input any) string {
-	switch val := input.(type) {
-	case bool:
-		return fmt.Sprintf("%t", val)
-	case float64:
-		return fmt.Sprintf("%f", val)
-	case int64:
-		return fmt.Sprintf("%d", val)
-	case string:
-		return val
-	default:
-		if val == nil {
-			return "null"
-		}
-
-		// TODO: simple arrays?
-
-		return ""
-	}
 }

@@ -61,10 +61,11 @@ func (p *Parser) Start() (JSONStructs, error) {
 		results := JSONStructs{}
 
 		for i, jsRaw := range jss {
-			js, ok := jsRaw.(*JSONStruct)
+			js, ok := jsRaw.(JSONStruct)
 			if !ok {
 				return nil, fmt.Errorf("array value at index %d was not a struct", i)
 			}
+
 			results = append(results, js)
 		}
 
@@ -128,40 +129,37 @@ func (p *Parser) peek() (any, error) {
 	return result, nil
 }
 
-func (p *Parser) parseObject() (*JSONStruct, error) {
-	result := &JSONStruct{
-		Fields: Fields{},
-	}
+func (p *Parser) parseObject() (JSONStruct, error) {
+	result := New()
 
 	if err := p.next(); err != nil {
-		return nil, err
+		return result, err
 	}
 
 	if err := p.parseDelim('{'); err != nil {
-		return nil, fmt.Errorf("failed to get start of object: %w", err)
+		return result, fmt.Errorf("failed to get start of object: %w", err)
 	}
 
 	for p.decoder.More() {
 		if err := p.next(); err != nil {
-			return nil, err
+			return result, err
 		}
 
 		key, err := p.parseString()
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse key: %w", err)
+			return result, fmt.Errorf("failed to parse key: %w", err)
 		}
 
 		p.log.Debug("parsed key", "key", key)
 
 		val, err := p.parseValue()
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse value: %w", err)
+			return result, fmt.Errorf("failed to parse value: %w", err)
 		}
 
 		field := Field{
 			GoName:       GetGoName(key),
 			OriginalName: key,
-			StrValue:     stringValue(val),
 			RawValue:     val,
 		}
 
@@ -169,11 +167,11 @@ func (p *Parser) parseObject() (*JSONStruct, error) {
 	}
 
 	if err := p.next(); err != nil {
-		return nil, fmt.Errorf("failed to get next token (expecting '}')")
+		return result, fmt.Errorf("failed to get next token (expecting '}')")
 	}
 
 	if err := p.parseDelim('}'); err != nil {
-		return nil, fmt.Errorf("failed to get start of object: %w", err)
+		return result, fmt.Errorf("failed to get start of object: %w", err)
 	}
 
 	return result, nil

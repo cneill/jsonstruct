@@ -83,6 +83,8 @@ func (p *Parser) next() error {
 		p.current = p.buf
 		p.buf = nil
 
+		p.log.Debug("setting current token to buffered token", "buf", p.current)
+
 		return nil
 	}
 
@@ -94,6 +96,8 @@ func (p *Parser) next() error {
 	p.previous = p.current
 	p.current = t
 
+	p.log.Debug("got next token", "current", p.current)
+
 	return nil
 }
 
@@ -104,6 +108,8 @@ func (p *Parser) backup() error {
 
 	// buffer the current token, pick it up with the subsequent next() call, back current up to previous
 	p.buf, p.current = p.current, p.previous
+
+	p.log.Debug("putting current token in buffer, setting current to previous token", "current", p.current, "buf", p.buf)
 
 	return nil
 }
@@ -136,8 +142,6 @@ func (p *Parser) parseObject() (*JSONStruct, error) {
 	}
 
 	for p.decoder.More() {
-		field := &Field{}
-
 		if err := p.next(); err != nil {
 			return nil, err
 		}
@@ -149,18 +153,19 @@ func (p *Parser) parseObject() (*JSONStruct, error) {
 
 		p.log.Debug("parsed key", "key", key)
 
-		field.GoName = GetGoName(key)
-		field.OriginalName = key
-
 		val, err := p.parseValue()
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse value: %w", err)
 		}
 
-		field.StrValue = stringValue(val)
-		field.RawValue = val
+		field := Field{
+			GoName:       GetGoName(key),
+			OriginalName: key,
+			StrValue:     stringValue(val),
+			RawValue:     val,
+		}
 
-		result.Fields = append(result.Fields, field)
+		result.AddFields(field)
 	}
 
 	if err := p.next(); err != nil {

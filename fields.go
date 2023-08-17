@@ -1,6 +1,9 @@
 package jsonstruct
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // Field represents a single struct field.
 type Field struct {
@@ -11,17 +14,17 @@ type Field struct {
 }
 
 // Name returns the name of this field as it will be rendered in the final struct.
-func (f *Field) Name() string {
+func (f Field) Name() string {
 	return f.GoName
 }
 
 // Tag returns the JSON tag as it will be rendered in the final struct.
-func (f *Field) Tag() string {
+func (f Field) Tag() string {
 	return fmt.Sprintf("`json: \"%s\"`", f.OriginalName)
 }
 
 // Type returns the type of the field as it will be rendered in the final struct.
-func (f *Field) Type() string {
+func (f Field) Type() string {
 	switch f.RawValue.(type) {
 	case int64:
 		return "int64"
@@ -40,5 +43,15 @@ func (f *Field) Type() string {
 	return "DUNNO BOSS"
 }
 
+func (f Field) Comment() string {
+	return fmt.Sprintf("// Example: %s", f.StrValue)
+}
+
 // Fields is a convenience type for a slice of Field structs.
-type Fields []*Field
+type Fields []Field
+
+func (f Fields) SortAlphabetically() {
+	sort.Slice(f, func(i, j int) bool {
+		return f[i].GoName < f[j].GoName
+	})
+}

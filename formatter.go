@@ -49,6 +49,10 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 
 func (f *Formatter) Format(input ...*JSONStruct) error {
 	for _, js := range input {
+		if f.SortFields {
+			js.Fields.SortAlphabetically()
+		}
+
 		if err := structTemplate.Execute(os.Stdout, js); err != nil {
 			return fmt.Errorf("failed to format struct with name %q: %w", js.Name, err)
 		}

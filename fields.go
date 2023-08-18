@@ -169,7 +169,7 @@ func (f Field) GetStruct() JSONStruct {
 }
 
 func (f Field) GetSliceStruct() JSONStruct {
-	result := JSONStruct{}.SetName(f.Name())
+	result := (&JSONStruct{}).SetName(f.Name())
 
 	anySlice, ok := f.rawValue.([]any)
 	if !ok {

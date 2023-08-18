@@ -42,30 +42,40 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 }
 
 func (f *Formatter) FormatString(input ...JSONStruct) (string, error) {
-	result := ""
+	structStrings := []string{}
+
+	// TODO: handle arrays containing structs of the same kind differently
+	// TODO: handle inline structs
 
 	for _, js := range input {
 		if f.SortFields {
 			js.Fields.SortAlphabetically()
 		}
 
-		fieldStrings := f.fieldStrings(js.Fields...)
-		result += fmt.Sprintf("type %s struct {\n\t%s\n}", js.Name, strings.Join(fieldStrings, "\n\t"))
+		fieldStrings := strings.Join(f.fieldStrings(js.Fields...), "\n\t")
+		formatted := fmt.Sprintf("type %s struct {\n\t%s\n}", js.Name, fieldStrings)
+		structStrings = append(structStrings, formatted)
 
-		// if we're not inlining structs, find all the fields of type struct and print their type definitions out too
+		// we've already printed out all the relevant structs inline
+		if f.InlineStructs {
+			continue
+		}
+
+		// if we're not inlining structs, find all the fields of type struct / []struct and print their type definitions
+		// out too
 		for _, field := range js.Fields {
-			if !f.InlineStructs && field.IsStruct() || field.IsStructSlice() {
+			if field.IsStruct() || field.IsStructSlice() {
 				formatted, err := f.FormatString(field.GetStruct())
 				if err != nil {
 					return "", fmt.Errorf("failed to format child struct %q: %w", field.Name(), err)
 				}
 
-				result += fmt.Sprintf("\n\n%s", formatted)
+				structStrings = append(structStrings, formatted)
 			}
 		}
 	}
 
-	return result, nil
+	return strings.Join(structStrings, "\n\n"), nil
 }
 
 func (f *Formatter) fieldStrings(fields ...*Field) []string {

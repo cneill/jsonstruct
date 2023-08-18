@@ -15,10 +15,10 @@ func New() JSONStruct {
 }
 
 // SetName sets the name to be used as a type for the JSONStruct.
-func (j JSONStruct) SetName(name string) JSONStruct {
+func (j *JSONStruct) SetName(name string) JSONStruct {
 	j.Name = name
 
-	return j
+	return *j
 }
 
 // AddFields appends Field objects to the JSONStruct.

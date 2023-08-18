@@ -2,6 +2,7 @@ package jsonstruct
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -28,51 +29,50 @@ func NewParser(input io.Reader, logger *slog.Logger) *Parser {
 }
 
 func (p *Parser) Start() (JSONStructs, error) {
-	first, err := p.peek()
-	if err != nil {
-		return nil, err
-	}
+	results := JSONStructs{}
 
-	p.log.Debug("successfully read first token")
-
-	delim, ok := first.(json.Delim)
-	if !ok {
-		return nil, fmt.Errorf("expecting to start with a json.Delim, got %+v", first)
-	}
-
-	switch delim {
-	case '{':
-		js, err := p.parseObject()
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse object: %w", err)
+	for i := 0; ; i++ {
+		first, err := p.peek()
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("failed to start parser: %w", err)
 		}
 
-		return JSONStructs{js}, nil
-	case '[':
-		jss, err := p.parseArray()
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse array: %w", err)
+		p.log.Debug("successfully read first token")
+
+		delim, ok := first.(json.Delim)
+		if !ok {
+			return nil, fmt.Errorf("expecting to start with a json.Delim, got %+v", first)
 		}
 
-		if len(jss) == 0 {
-			return JSONStructs{}, nil
-		}
+		p.log.Debug("successfully read a JSON delimiter", "delim", delim)
 
-		results := JSONStructs{}
-
-		for i, jsRaw := range jss {
-			js, ok := jsRaw.(JSONStruct)
-			if !ok {
-				return nil, fmt.Errorf("array value at index %d was not a struct", i)
+		switch delim {
+		case '{':
+			js, err := p.parseObject()
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse object: %w", err)
 			}
 
 			results = append(results, js)
-		}
+		case '[':
+			jsRaw, err := p.parseArray()
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse array: %w", err)
+			}
 
-		return results, nil
+			structs, err := anySliceToJSONStructs(jsRaw)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse JSON structs: %w", err)
+			}
+
+			results = append(results, structs...)
+		}
 	}
 
-	return nil, fmt.Errorf("invalid starting token: %+v", first)
+	// return nil, fmt.Errorf("invalid starting token: %+v", first)
+	return results, nil
 }
 
 func (p *Parser) next() error {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/cneill/jsonstruct"
 
@@ -75,7 +77,10 @@ func isStdin() bool {
 }
 
 func genStructs(ctx *cli.Context) error {
-	inputs := []*os.File{}
+	inputs, err := getInputs(ctx)
+	if err != nil {
+		return err
+	}
 
 	formatter, err := jsonstruct.NewFormatter(&jsonstruct.FormatterOptions{
 		SortFields:    ctx.Bool("sort-fields"),
@@ -86,22 +91,11 @@ func genStructs(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set up formatter: %w", err)
 	}
 
-	if isStdin() {
-		inputs = append(inputs, os.Stdin)
-	} else {
-		for _, fileName := range ctx.Args().Slice() {
-			file, err := os.Open(fileName)
-			if err != nil {
-				return fmt.Errorf("failed to open file %q: %w", fileName, err)
-			}
-
-			inputs = append(inputs, file)
-		}
-	}
-
 	for _, input := range inputs {
 		defer func() {
 			input.Close()
+
+			log.Debug("closed file", "file", input.Name())
 		}()
 
 		p := jsonstruct.NewParser(input, log)
@@ -111,8 +105,16 @@ func genStructs(ctx *cli.Context) error {
 			return fmt.Errorf("failed to parse input %q: %w", input.Name(), err)
 		}
 
-		if ctx.Bool("print-filename") {
-			fmt.Println(input.Name())
+		normalizedFileName := jsonstruct.GetGoName(strings.TrimSuffix(input.Name(), path.Ext(input.Name())))
+
+		for i := 0; i < len(results); i++ {
+			structName := fmt.Sprintf("%s%d", normalizedFileName, i+1)
+			results[i].SetName(structName)
+		}
+
+		if ctx.Bool("print-filenames") {
+			spacer := strings.Repeat("=", len(input.Name()))
+			fmt.Printf("%s\n%s\n%s\n", spacer, input.Name(), spacer)
 		}
 
 		result, err := formatter.FormatString(results...)
@@ -120,10 +122,32 @@ func genStructs(ctx *cli.Context) error {
 			return fmt.Errorf("failed to format struct(s) from %q: %w", input.Name(), err)
 		}
 
-		fmt.Printf("%s", result)
+		fmt.Printf("%s\n", result)
 	}
 
 	return nil
+}
+
+func getInputs(ctx *cli.Context) ([]*os.File, error) {
+	inputs := []*os.File{}
+
+	if isStdin() {
+		inputs = append(inputs, os.Stdin)
+
+		log.Debug("got JSON input from stdin")
+	} else {
+		for _, fileName := range ctx.Args().Slice() {
+			file, err := os.Open(fileName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open file %q: %w", fileName, err)
+			}
+			log.Debug("opened file to read JSON structs", "file", fileName)
+
+			inputs = append(inputs, file)
+		}
+	}
+
+	return inputs, nil
 }
 
 func main() {

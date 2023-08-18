@@ -84,3 +84,47 @@ func TestFieldValue(t *testing.T) {
 		})
 	}
 }
+
+func TestFieldEquals(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		field1 *jsonstruct.Field
+		field2 *jsonstruct.Field
+		equal  bool
+	}{
+		{
+			name:   "different_values",
+			field1: jsonstruct.NewField().SetName("hah").SetValue(int64(1)),
+			field2: jsonstruct.NewField().SetName("hah").SetValue(int64(2)),
+			equal:  true,
+		},
+		{
+			name:   "different_names",
+			field1: jsonstruct.NewField().SetName("hah1").SetValue(int64(1)),
+			field2: jsonstruct.NewField().SetName("hah2").SetValue(int64(1)),
+			equal:  false,
+		},
+		{
+			name:   "different_types",
+			field1: jsonstruct.NewField().SetName("hah").SetValue(int64(1)),
+			field2: jsonstruct.NewField().SetName("hah").SetValue(float64(2)),
+			equal:  false,
+		},
+		{
+			name:   "different_raw_names_same_go_names",
+			field1: jsonstruct.NewField().SetName("hah_hah_hah").SetValue(int64(1)),
+			field2: jsonstruct.NewField().SetName("hah-hah-hah").SetValue(int64(2)),
+			equal:  false,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, test.equal, test.field1.Equals(test.field2))
+		})
+	}
+}

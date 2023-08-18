@@ -232,6 +232,7 @@ func (f Field) GetSliceStruct() *JSONStruct {
 	foundFields := map[string][]*Field{}
 
 	// we have a slice of structs, each of which may or may not contain the full set of fields
+	// TODO: use this logic to handle JSON inputs of type []object
 	for _, js := range jss {
 		for _, field := range js.Fields {
 			foundFields[field.Name()] = append(foundFields[field.Name()], field)
@@ -269,7 +270,8 @@ func (f Field) IsStructSlice() bool {
 	return true
 }
 
-func (f Field) Equals(input Field) bool {
+// Equals returns true if two Fields share a name/type/tag - does not compare values!
+func (f Field) Equals(input *Field) bool {
 	switch {
 	case f.Name() != input.Name():
 		return false

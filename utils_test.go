@@ -1,6 +1,7 @@
 package jsonstruct_test
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,7 @@ import (
 	"github.com/cneill/jsonstruct"
 )
 
-func TestGetNormalizedName(t *testing.T) {
+func TestGetGoName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -26,6 +27,7 @@ func TestGetNormalizedName(t *testing.T) {
 		{"garbage_separator", "@t@e@s@t", "Test"},
 		{"spaces", "       spaces", "Spaces"},
 		{"multiple_spaces", "here are some spaces", "HereAreSomeSpaces"},
+		{"leading_number", "0", "JSON0"},
 	}
 
 	for _, test := range tests {
@@ -37,4 +39,30 @@ func TestGetNormalizedName(t *testing.T) {
 			assert.Equal(t, output, test.output)
 		})
 	}
+}
+
+func FuzzGetGoName(f *testing.F) {
+	validRegex := regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*$`)
+
+	seeds := []string{
+		"this_is-a.test_name",
+		"remote_-.URL",
+		"ThiSiSaNumber2",
+		"This_Is_An_ID",
+		"_underscored",
+		"($@%)@$%)(@",
+		"@)(#$)@(#$)@#($garbage@#)$@)#($@)#($",
+		"@t@e@s@t",
+		"       spaces",
+		"here are some spaces",
+	}
+
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, input string) {
+		transformed := jsonstruct.GetGoName(input)
+		assert.True(t, validRegex.MatchString(transformed) || transformed == "")
+	})
 }

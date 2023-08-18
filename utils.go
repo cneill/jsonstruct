@@ -37,6 +37,10 @@ func GetGoName(input string) string {
 	result := strings.Title(strings.Join(temp, " "))
 	result = strings.ReplaceAll(result, " ", "")
 
+	if len(result) > 0 && isNumber(rune(result[0])) {
+		result = "JSON" + result
+	}
+
 	return result
 }
 
@@ -48,7 +52,11 @@ func GetFileGoName(filePath string) string {
 }
 
 func isAlphaNum(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || isNumber(r)
+}
+
+func isNumber(r rune) bool {
+	return (r >= '0' && r <= '9')
 }
 
 func isSeparator(r rune) bool {

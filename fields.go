@@ -46,7 +46,7 @@ func (f Field) Name() string {
 // Tag returns the JSON tag as it will be rendered in the final struct.
 func (f Field) Tag() string {
 	if f.optional {
-		return fmt.Sprintf("`json:\"%s,omitempty\"", f.originalName)
+		return fmt.Sprintf("`json:\"%s,omitempty\"`", f.originalName)
 	}
 
 	return fmt.Sprintf("`json:\"%s\"`", f.originalName)
@@ -229,22 +229,37 @@ func (f Field) GetSliceStruct() *JSONStruct {
 		return nil
 	}
 
-	foundFields := map[string][]*Field{}
+	// have to use synced slices here to avoid the reordering that would occur with a map
+	foundFields := []*Field{}
+	fieldCounts := []int{}
 
 	// we have a slice of structs, each of which may or may not contain the full set of fields
 	// TODO: use this logic to handle JSON inputs of type []object
 	for _, js := range jss {
 		for _, field := range js.Fields {
-			foundFields[field.Name()] = append(foundFields[field.Name()], field)
+			alreadySeen := false
+
+			for i, foundField := range foundFields {
+				if field.Equals(foundField) {
+					fieldCounts[i]++
+
+					alreadySeen = true
+				}
+			}
+
+			if !alreadySeen {
+				foundFields = append(foundFields, field)
+				fieldCounts = append(fieldCounts, 1)
+			}
 		}
 	}
 
-	for _, fields := range foundFields {
-		if len(fields) != len(jss) {
-			fields[0].SetOptional()
+	for i := 0; i < len(foundFields); i++ {
+		if fieldCounts[i] != len(jss) {
+			foundFields[i].SetOptional()
 		}
 
-		result.AddFields(fields[0])
+		result.AddFields(foundFields[i])
 	}
 
 	return result

@@ -52,8 +52,8 @@ func (f *Formatter) FormatString(input ...*JSONStruct) (string, error) {
 			js.Fields.SortAlphabetically()
 		}
 
-		fieldStrings := strings.Join(f.fieldStrings(js.Fields...), "\n\t")
-		formatted := fmt.Sprintf("type %s struct {\n\t%s\n}", js.Name, fieldStrings)
+		fieldStrings := strings.Join(f.fieldStrings(js.Fields...), "\n        ")
+		formatted := fmt.Sprintf("type %s struct {\n        %s\n}", js.Name, fieldStrings)
 		structStrings = append(structStrings, formatted)
 
 		// we've already printed out all the relevant structs inline

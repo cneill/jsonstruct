@@ -46,10 +46,10 @@ func (f Field) Name() string {
 // Tag returns the JSON tag as it will be rendered in the final struct.
 func (f Field) Tag() string {
 	if f.optional {
-		return fmt.Sprintf("`json: \"%s,omitempty\"", f.originalName)
+		return fmt.Sprintf("`json:\"%s,omitempty\"", f.originalName)
 	}
 
-	return fmt.Sprintf("`json: \"%s\"`", f.originalName)
+	return fmt.Sprintf("`json:\"%s\"`", f.originalName)
 }
 
 // Type returns the type of the field as it will be rendered in the final struct.

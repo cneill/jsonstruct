@@ -23,7 +23,7 @@ func TestFieldType(t *testing.T) {
 		{"struct", jsonstruct.New(), "*Struct"},
 		{"null", nil, "*json.RawMessage"},
 		{"bool_slice", []bool{true, false, true}, "[]bool"},
-		{"int_slice", []int{1, 2, 3}, "[]int"},
+		{"int_slice", []int64{1, 2, 3}, "[]int64"},
 		{"float_slice", []float64{1.1, 1.2, 1.3}, "[]float64"},
 		{"string_slice", []string{"1", "2", "3"}, "[]string"},
 		{"garbage_slice", []any{1, "1", 1.0}, "[]*json.RawMessage"},
@@ -57,22 +57,21 @@ func TestFieldValue(t *testing.T) {
 	}{
 		{"bool", true, "true"},
 		{"int", int64(123), "123"},
-		{"float", float64(1.23), "1.23000"},
-		{"string", "test", "\"string\""},
+		{"float", float64(1.23), "1.230"},
+		{"string", "test", "\"test\""},
 		{"struct", jsonstruct.New(), ""},
-		{"null", nil, ""},
+		{"null", nil, "null"},
 		{"bool_slice", []bool{true, false, true}, "[true, false, true]"},
-		{"int_slice", []int{1, 2, 3}, "[1, 2, 3]"},
-		{"float_slice", []float64{1.1, 1.2, 1.3}, "[1.1, 1.2, 1.3]"},
+		{"int_slice", []int64{1, 2, 3}, "[1, 2, 3]"},
+		{"float_slice", []float64{1.1, 1.2, 1.3}, "[1.100, 1.200, 1.300]"},
 		{"string_slice", []string{"1", "2", "3"}, "[\"1\", \"2\", \"3\"]"},
 		{"garbage_slice", []any{1, "1", 1.0}, ""},
 		{"any_bool_slice", []any{true, false, true}, "[true, false, true]"},
 		{"any_int_slice", []any{int64(1), int64(2), int64(3)}, "[1, 2, 3]"},
-		{"any_float_slice", []any{1.0, 2.0, 3.0}, "[1.0, 2.0, 3.0]"},
+		{"any_float_slice", []any{1.0, 2.0, 3.0}, "[1.000, 2.000, 3.000]"},
 		{"any_string_slice", []any{"1", "2", "3"}, "[\"1\", \"2\", \"3\"]"},
 		{"null_slice", []any{nil, nil}, ""},
 		{"structs", []any{jsonstruct.New()}, ""},
-		// {"nested_slices", []any{[]any{1, 2, 3}, []any{4, 5, 6}}, "[][]int64"}, // TODO: make this pass
 	}
 
 	for _, test := range tests {

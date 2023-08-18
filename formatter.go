@@ -103,15 +103,22 @@ func (f *Formatter) fieldStrings(fields ...*Field) []string {
 		}
 
 		for _, field := range bucket {
-			if f.ValueComments {
-				fmtString := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%s", longestName, longestType, longestTag)
-				results = append(results, fmt.Sprintf(fmtString, field.Name(), field.Type(), field.Tag(), field.Comment()))
+			// need to left-justify the field info so it spits things out like gofmt would
 
-				continue
+			formatted := fmt.Sprintf("%-*s%-*s",
+				longestName, field.Name(),
+				longestType, field.Type())
+
+			if f.ValueComments {
+				formatted = fmt.Sprintf("%s%-*s%s",
+					formatted,
+					longestTag, field.Tag(),
+					field.Comment())
+			} else {
+				formatted = fmt.Sprintf("%s%s", formatted, field.Tag())
 			}
 
-			fmtString := fmt.Sprintf("%%-%ds%%-%ds%%s", longestName, longestType)
-			results = append(results, fmt.Sprintf(fmtString, field.Name(), field.Type(), field.Tag()))
+			results = append(results, formatted)
 		}
 	}
 
@@ -120,6 +127,8 @@ func (f *Formatter) fieldStrings(fields ...*Field) []string {
 
 func (f *Formatter) fieldBuckets(fields ...*Field) [][]*Field {
 	// TODO: handle the case of comments on previous lines when that's a possibility
+	// TODO: handle case of only some fields being commented? means name/type formatted the same, tag left-justified to
+	// width of nearby tags for comment spacing (honestly, I think my way looks better...)
 	if !f.InlineStructs {
 		return [][]*Field{fields}
 	}

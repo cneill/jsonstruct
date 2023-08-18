@@ -15,6 +15,10 @@ type Field struct {
 	optional     bool
 }
 
+func NewField() *Field {
+	return &Field{}
+}
+
 func (f *Field) SetName(originalName string) *Field {
 	f.goName = GetGoName(originalName)
 	f.originalName = originalName

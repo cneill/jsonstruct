@@ -40,9 +40,48 @@ func TestFieldType(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			f := (&jsonstruct.Field{}).SetName(test.name).SetValue(test.input)
+			f := jsonstruct.NewField().SetName(test.name).SetValue(test.input)
 
 			assert.Equal(t, test.output, f.Type())
+		})
+	}
+}
+
+func TestFieldValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		input  any
+		output string
+	}{
+		{"bool", true, "true"},
+		{"int", int64(123), "123"},
+		{"float", float64(1.23), "1.23000"},
+		{"string", "test", "\"string\""},
+		{"struct", jsonstruct.New(), ""},
+		{"null", nil, ""},
+		{"bool_slice", []bool{true, false, true}, "[true, false, true]"},
+		{"int_slice", []int{1, 2, 3}, "[1, 2, 3]"},
+		{"float_slice", []float64{1.1, 1.2, 1.3}, "[1.1, 1.2, 1.3]"},
+		{"string_slice", []string{"1", "2", "3"}, "[\"1\", \"2\", \"3\"]"},
+		{"garbage_slice", []any{1, "1", 1.0}, ""},
+		{"any_bool_slice", []any{true, false, true}, "[true, false, true]"},
+		{"any_int_slice", []any{int64(1), int64(2), int64(3)}, "[1, 2, 3]"},
+		{"any_float_slice", []any{1.0, 2.0, 3.0}, "[1.0, 2.0, 3.0]"},
+		{"any_string_slice", []any{"1", "2", "3"}, "[\"1\", \"2\", \"3\"]"},
+		{"null_slice", []any{nil, nil}, ""},
+		{"structs", []any{jsonstruct.New()}, ""},
+		// {"nested_slices", []any{[]any{1, 2, 3}, []any{4, 5, 6}}, "[][]int64"}, // TODO: make this pass
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			f := jsonstruct.NewField().SetName(test.name).SetValue(test.input)
+
+			assert.Equal(t, test.output, f.Value())
 		})
 	}
 }

@@ -75,7 +75,7 @@ func simpleAnyToString(input any) string {
 	case bool:
 		return fmt.Sprintf("%t", val)
 	case float64:
-		return fmt.Sprintf("%f", val)
+		return fmt.Sprintf("%.3f", val)
 	case int64:
 		return fmt.Sprintf("%d", val)
 	case string:

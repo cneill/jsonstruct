@@ -20,6 +20,8 @@ func TestFieldType(t *testing.T) {
 		{"int", int64(123), "int64"},
 		{"float", float64(1.23), "float64"},
 		{"string", "test", "string"},
+		{"struct", jsonstruct.New(), "*Struct"},
+		{"null", nil, "*json.RawMessage"},
 		{"bool_slice", []bool{true, false, true}, "[]bool"},
 		{"int_slice", []int{1, 2, 3}, "[]int"},
 		{"float_slice", []float64{1.1, 1.2, 1.3}, "[]float64"},
@@ -29,6 +31,9 @@ func TestFieldType(t *testing.T) {
 		{"any_int_slice", []any{int64(1), int64(2), int64(3)}, "[]int64"},
 		{"any_float_slice", []any{1.0, 2.0, 3.0}, "[]float64"},
 		{"any_string_slice", []any{"1", "2", "3"}, "[]string"},
+		{"null_slice", []any{nil, nil}, "[]*json.RawMessage"},
+		{"structs", []any{jsonstruct.New()}, "[]*Structs"},
+		// {"nested_slices", []any{[]any{1, 2, 3}, []any{4, 5, 6}}, "[][]int64"}, // TODO: make this pass
 	}
 
 	for _, test := range tests {

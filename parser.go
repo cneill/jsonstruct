@@ -129,7 +129,7 @@ func (p *Parser) peek() (any, error) {
 	return result, nil
 }
 
-func (p *Parser) parseObject() (JSONStruct, error) {
+func (p *Parser) parseObject() (*JSONStruct, error) {
 	result := New()
 
 	if err := p.next(); err != nil {

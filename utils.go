@@ -2,6 +2,7 @@ package jsonstruct
 
 import (
 	"fmt"
+	"path"
 	"strings"
 )
 
@@ -39,6 +40,13 @@ func GetGoName(input string) string {
 	return result
 }
 
+func GetFileGoName(filePath string) string {
+	_, fileName := path.Split(filePath)
+	ext := path.Ext(fileName)
+
+	return GetGoName(strings.TrimSuffix(fileName, ext))
+}
+
 func isAlphaNum(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
 }
@@ -51,13 +59,28 @@ func anySliceToJSONStructs(input []any) (JSONStructs, error) {
 	result := JSONStructs{}
 
 	for i, item := range input {
-		js, ok := item.(JSONStruct)
+		js, ok := item.(*JSONStruct)
 		if !ok {
-			return nil, fmt.Errorf("item %d was not a JSONStruct", i)
+			return nil, fmt.Errorf("item %d was not a *JSONStruct", i)
 		}
 
 		result = append(result, js)
 	}
 
 	return result, nil
+}
+
+func simpleAnyToString(input any) string {
+	switch val := input.(type) {
+	case bool:
+		return fmt.Sprintf("%t", val)
+	case float64:
+		return fmt.Sprintf("%f", val)
+	case int64:
+		return fmt.Sprintf("%d", val)
+	case string:
+		return fmt.Sprintf("\"%s\"", val)
+	}
+
+	return ""
 }

@@ -41,7 +41,7 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 	return f, nil
 }
 
-func (f *Formatter) FormatString(input ...JSONStruct) (string, error) {
+func (f *Formatter) FormatString(input ...*JSONStruct) (string, error) {
 	structStrings := []string{}
 
 	// TODO: handle arrays containing structs of the same kind differently

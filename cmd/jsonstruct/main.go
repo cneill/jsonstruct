@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/cneill/jsonstruct"
@@ -105,16 +104,16 @@ func genStructs(ctx *cli.Context) error {
 			return fmt.Errorf("failed to parse input %q: %w", input.Name(), err)
 		}
 
-		normalizedFileName := jsonstruct.GetGoName(strings.TrimSuffix(input.Name(), path.Ext(input.Name())))
+		goFileName := jsonstruct.GetFileGoName(input.Name())
 
 		for i := 0; i < len(results); i++ {
-			structName := fmt.Sprintf("%s%d", normalizedFileName, i+1)
+			structName := fmt.Sprintf("%s%d", goFileName, i+1)
 			results[i].SetName(structName)
 		}
 
 		if ctx.Bool("print-filenames") {
 			spacer := strings.Repeat("=", len(input.Name()))
-			fmt.Printf("%s\n%s\n%s\n", spacer, input.Name(), spacer)
+			fmt.Printf("// %s\n// %s\n// %s\n", spacer, input.Name(), spacer)
 		}
 
 		result, err := formatter.FormatString(results...)

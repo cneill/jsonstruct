@@ -5,16 +5,16 @@ import (
 	"strings"
 )
 
-// GetNormalizedName takes in a field name or file name and returns a "normalized" (CamelCase) string suitable for use as a Go
+// GetGoName takes in a field name or file name and returns a "normalized" (CamelCase) string suitable for use as a Go
 // variable name.
 func GetGoName(input string) string {
 	var cleaned strings.Builder
 
 	// remove garbage characters, replace separators with ' '
 	for _, r := range input {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+		if isAlphaNum(r) {
 			cleaned.WriteRune(r)
-		} else if r == '_' || r == '.' || r == '-' || r == ' ' {
+		} else if isSeparator(r) {
 			cleaned.WriteRune(' ')
 		}
 	}
@@ -32,10 +32,19 @@ func GetGoName(input string) string {
 		temp = append(temp, word)
 	}
 
+	// TODO: replace this with golang.org/x/text/cases.Title()
 	result := strings.Title(strings.Join(temp, " "))
 	result = strings.ReplaceAll(result, " ", "")
 
 	return result
+}
+
+func isAlphaNum(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+}
+
+func isSeparator(r rune) bool {
+	return r == '_' || r == '.' || r == '-' || r == ' '
 }
 
 func anySliceToJSONStructs(input []any) (JSONStructs, error) {

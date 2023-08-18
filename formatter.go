@@ -49,10 +49,12 @@ func (f *Formatter) FormatString(input ...JSONStruct) (string, error) {
 			js.Fields.SortAlphabetically()
 		}
 
-		result += fmt.Sprintf("type %s struct {\n\t%s\n}", js.Name, strings.Join(f.fieldStrings(js.Fields...), "\n\t"))
+		fieldStrings := f.fieldStrings(js.Fields...)
+		result += fmt.Sprintf("type %s struct {\n\t%s\n}", js.Name, strings.Join(fieldStrings, "\n\t"))
 
+		// if we're not inlining structs, find all the fields of type struct and print their type definitions out too
 		for _, field := range js.Fields {
-			if !f.InlineStructs && field.IsStruct() {
+			if !f.InlineStructs && field.IsStruct() || field.IsStructSlice() {
 				formatted, err := f.FormatString(field.GetStruct())
 				if err != nil {
 					return "", fmt.Errorf("failed to format child struct %q: %w", field.Name(), err)
@@ -66,7 +68,7 @@ func (f *Formatter) FormatString(input ...JSONStruct) (string, error) {
 	return result, nil
 }
 
-func (f *Formatter) fieldStrings(fields ...Field) []string {
+func (f *Formatter) fieldStrings(fields ...*Field) []string {
 	var (
 		results = []string{}
 		buckets = f.fieldBuckets(fields...)
@@ -77,15 +79,15 @@ func (f *Formatter) fieldStrings(fields ...Field) []string {
 		var longestName, longestType, longestTag int
 
 		for _, field := range bucket {
-			if name := field.Name(); len(name) > longestName {
+			if name := field.Name(); len(name) > longestName-1 {
 				longestName = len(name) + 1
 			}
 
-			if typ := field.Type(); len(typ) > longestType {
+			if typ := field.Type(); len(typ) > longestType-1 {
 				longestType = len(typ) + 1
 			}
 
-			if tag := field.Tag(); len(tag) > longestTag {
+			if tag := field.Tag(); len(tag) > longestTag-1 {
 				longestTag = len(tag) + 1
 			}
 		}
@@ -106,20 +108,20 @@ func (f *Formatter) fieldStrings(fields ...Field) []string {
 	return results
 }
 
-func (f *Formatter) fieldBuckets(fields ...Field) [][]Field {
+func (f *Formatter) fieldBuckets(fields ...*Field) [][]*Field {
 	// TODO: handle the case of comments on previous lines when that's a possibility
 	if !f.InlineStructs {
-		return [][]Field{fields}
+		return [][]*Field{fields}
 	}
 
-	buckets := [][]Field{}
-	bucket := []Field{}
+	buckets := [][]*Field{}
+	bucket := []*Field{}
 
 	for _, field := range fields {
 		if field.IsStruct() {
 			bucket = append(bucket, field)
 			buckets = append(buckets, bucket)
-			bucket = []Field{}
+			bucket = []*Field{}
 		} else {
 			bucket = append(bucket, field)
 		}

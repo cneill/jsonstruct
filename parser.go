@@ -157,11 +157,7 @@ func (p *Parser) parseObject() (JSONStruct, error) {
 			return result, fmt.Errorf("failed to parse value: %w", err)
 		}
 
-		field := Field{
-			GoName:       GetGoName(key),
-			OriginalName: key,
-			RawValue:     val,
-		}
+		field := (&Field{}).SetName(key).SetValue(val)
 
 		result.AddFields(field)
 	}

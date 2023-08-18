@@ -22,7 +22,7 @@ func (j JSONStruct) SetName(name string) JSONStruct {
 }
 
 // AddFields appends Field objects to the JSONStruct.
-func (j *JSONStruct) AddFields(fields ...Field) JSONStruct {
+func (j *JSONStruct) AddFields(fields ...*Field) JSONStruct {
 	j.Fields = append(j.Fields, fields...)
 
 	return *j

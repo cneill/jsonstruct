@@ -1,6 +1,7 @@
 package jsonstruct
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -35,4 +36,19 @@ func GetGoName(input string) string {
 	result = strings.ReplaceAll(result, " ", "")
 
 	return result
+}
+
+func anySliceToJSONStructs(input []any) (JSONStructs, error) {
+	result := JSONStructs{}
+
+	for i, item := range input {
+		js, ok := item.(JSONStruct)
+		if !ok {
+			return nil, fmt.Errorf("item %d was not a JSONStruct", i)
+		}
+
+		result = append(result, js)
+	}
+
+	return result, nil
 }

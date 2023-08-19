@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/big"
+	"strconv"
 	"strings"
 )
+
+var ErrOverflow = errors.New("provided number was too large")
 
 type Parser struct {
 	log      *slog.Logger
@@ -210,6 +214,32 @@ func (p *Parser) parseString() (string, error) {
 	return tokenStr, nil
 }
 
+func (p *Parser) parseNumber() (any, error) {
+	tokenNumber, ok := p.current.(json.Number)
+	if !ok {
+		return 0, fmt.Errorf("not json.Number")
+	}
+
+	numberStr := string(tokenNumber)
+
+	p.log.Debug("got Number", "json.Number", tokenNumber)
+
+	if strings.Contains(numberStr, ".") || strings.Contains(numberStr, "e") || strings.Contains(numberStr, "E") {
+		// float of some kind
+		if _, err := strconv.ParseFloat(numberStr, 64); errors.Is(err, strconv.ErrRange) {
+			return p.parseBigFloat()
+		}
+
+		return p.parseFloat64()
+	}
+
+	if _, err := strconv.ParseInt(numberStr, 10, 64); errors.Is(err, strconv.ErrRange) {
+		return p.parseBigInt()
+	}
+
+	return p.parseInt64()
+}
+
 func (p *Parser) parseInt64() (int64, error) {
 	tokenNumber, ok := p.current.(json.Number)
 	if !ok {
@@ -228,6 +258,21 @@ func (p *Parser) parseInt64() (int64, error) {
 	return tokenInt, nil
 }
 
+func (p *Parser) parseBigInt() (*big.Int, error) {
+	tokenNumber, ok := p.current.(json.Number)
+	if !ok {
+		return big.NewInt(0), fmt.Errorf("not json.Number")
+	}
+
+	p.log.Debug("got Number", "json.Number", tokenNumber)
+
+	tokenBigInt, _ := (&big.Int{}).SetString(string(tokenNumber), 10)
+
+	p.log.Debug("got *big.Int float", "int", tokenBigInt)
+
+	return tokenBigInt, nil
+}
+
 func (p *Parser) parseFloat64() (float64, error) {
 	tokenNumber, ok := p.current.(json.Number)
 	if !ok {
@@ -244,6 +289,24 @@ func (p *Parser) parseFloat64() (float64, error) {
 	p.log.Debug("got float", "float", tokenFloat)
 
 	return tokenFloat, nil
+}
+
+func (p *Parser) parseBigFloat() (*big.Float, error) {
+	tokenNumber, ok := p.current.(json.Number)
+	if !ok {
+		return big.NewFloat(0.0), fmt.Errorf("not json.Number")
+	}
+
+	p.log.Debug("got Number", "json.Number", tokenNumber)
+
+	tokenBigFloat, _, err := (&big.Float{}).Parse(string(tokenNumber), 10)
+	if err != nil {
+		return big.NewFloat(0.0), fmt.Errorf("not big.Float: %w: %w", ErrOverflow, err)
+	}
+
+	p.log.Debug("got *big.Float", "float", tokenBigFloat)
+
+	return tokenBigFloat, nil
 }
 
 func (p *Parser) parseArray() ([]any, error) {
@@ -306,11 +369,7 @@ func (p *Parser) parseValue() (any, error) {
 	case string:
 		return p.parseString()
 	case json.Number:
-		if strings.Contains(string(val), ".") {
-			return p.parseFloat64()
-		}
-
-		return p.parseInt64()
+		return p.parseNumber()
 	default:
 		// got null
 		return nil, nil

@@ -1,11 +1,17 @@
 package jsonstruct_test
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cneill/jsonstruct"
+)
+
+var (
+	bigInt, _      = (&big.Int{}).SetString("9223372036854775808", 10)
+	bigFloat, _, _ = (&big.Float{}).Parse("1.79769313486231570814527423731704356798070e309", 10)
 )
 
 func TestFieldType(t *testing.T) {
@@ -18,7 +24,9 @@ func TestFieldType(t *testing.T) {
 	}{
 		{"bool", true, "bool"},
 		{"int", int64(123), "int64"},
+		{"big_int", bigInt, "*big.Int"},
 		{"float", float64(1.23), "float64"},
+		{"big_float", bigFloat, "*big.Float"},
 		{"string", "test", "string"},
 		{"struct", jsonstruct.New(), "*Struct"},
 		{"null", nil, "*json.RawMessage"},

@@ -2,6 +2,7 @@ package jsonstruct
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 	"strings"
@@ -57,8 +58,12 @@ func (f Field) Type() string {
 	switch f.rawValue.(type) {
 	case int64:
 		return "int64"
+	case *big.Int:
+		return "*big.Int"
 	case float64:
 		return "float64"
+	case *big.Float:
+		return "*big.Float"
 	case string:
 		return "string"
 	case bool:

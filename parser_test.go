@@ -1,6 +1,8 @@
 package jsonstruct_test
 
 import (
+	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -90,4 +92,40 @@ func TestParser(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzParser(f *testing.F) {
+	seeds := []string{
+		`{"a": 1}`,
+		`{"a": [], "b": 2, "c": {"d": 1}}`,
+		`{"test": {"test": {"test": {"test": "test"}}}}`,
+		`[{"test": "test", "test2": {"test": "test", "test2": [{"test": "test"}]}}]`,
+		`{"test": 1e10000000000}`,
+	}
+
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, input string) {
+		raw := &json.RawMessage{}
+
+		if len(input) == 0 || input[0] != '{' {
+			// only take objects for now
+			return
+		}
+
+		if err := json.Unmarshal([]byte(input), raw); err != nil {
+			// do we want to test valid JSON?
+			return
+		}
+
+		r := strings.NewReader(input)
+		p := jsonstruct.NewParser(r, slog.Default())
+		_, err := p.Start()
+		if errors.Is(err, jsonstruct.ErrOverflow) {
+			return
+		}
+		assert.Nil(t, err)
+	})
 }

@@ -2,6 +2,7 @@ package jsonstruct
 
 import (
 	"fmt"
+	"math/big"
 	"path"
 	"strings"
 )
@@ -82,7 +83,7 @@ func simpleAnyToString(input any) string {
 	switch val := input.(type) {
 	case bool:
 		return fmt.Sprintf("%t", val)
-	case float64:
+	case float64, *big.Float:
 		return fmt.Sprintf("%.3f", val)
 	case int64:
 		return fmt.Sprintf("%d", val)

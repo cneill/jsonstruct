@@ -116,10 +116,7 @@ func genStructs(ctx *cli.Context) error {
 			fmt.Printf("// %s\n// %s\n// %s\n", spacer, input.Name(), spacer)
 		}
 
-		result, err := formatter.FormatString(results...)
-		if err != nil {
-			return fmt.Errorf("failed to format struct(s) from %q: %w", input.Name(), err)
-		}
+		result := formatter.FormatStruct(results...)
 
 		fmt.Printf("%s\n", result)
 	}

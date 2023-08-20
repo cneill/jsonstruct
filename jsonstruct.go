@@ -4,6 +4,10 @@ package jsonstruct
 type JSONStruct struct {
 	Name   string
 	Fields Fields
+	// Inline tells the Formatter to format this as an anonymous inline struct
+	Inline bool
+	// InSlice tells the Formatter that this struct is part of a slice and should be de-duplicated rather than repeated.
+	InSlice bool
 }
 
 // NewJSONStruct returns an initialized JSONStruct.
@@ -24,6 +28,18 @@ func (j *JSONStruct) SetName(name string) *JSONStruct {
 // AddFields appends Field objects to the JSONStruct.
 func (j *JSONStruct) AddFields(fields ...*Field) *JSONStruct {
 	j.Fields = append(j.Fields, fields...)
+
+	return j
+}
+
+func (j *JSONStruct) SetInline() *JSONStruct {
+	j.Inline = true
+
+	return j
+}
+
+func (j *JSONStruct) SetInSlice() *JSONStruct {
+	j.InSlice = true
 
 	return j
 }

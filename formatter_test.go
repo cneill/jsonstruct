@@ -39,8 +39,7 @@ func TestFormatString(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			test.input.SetName(jsonstruct.GetGoName(test.name))
-			output, err := formatter.FormatString(test.input)
-			assert.Nil(t, err)
+			output := formatter.FormatStruct(test.input)
 			assert.Equal(t, test.expected, output)
 		})
 	}
@@ -77,8 +76,7 @@ func TestFormatStringFiles(t *testing.T) {
 		formatter, err := jsonstruct.NewFormatter(formatterOpts)
 		assert.Nil(t, err)
 
-		output, err := formatter.FormatString(js...)
-		assert.Nil(t, err)
+		output := formatter.FormatStruct(js...)
 
 		assert.Equal(t, strings.TrimSpace(string(expectedContents)), output)
 	}

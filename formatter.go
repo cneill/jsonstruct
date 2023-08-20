@@ -41,7 +41,7 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 	return f, nil
 }
 
-func (f *Formatter) FormatString(input ...*JSONStruct) (string, error) {
+func (f *Formatter) FormatStruct(input ...*JSONStruct) string {
 	structStrings := []string{}
 
 	// TODO: handle arrays containing structs of the same kind differently
@@ -52,8 +52,15 @@ func (f *Formatter) FormatString(input ...*JSONStruct) (string, error) {
 			js.Fields.SortAlphabetically()
 		}
 
+		var formatted string
+
 		fieldStrings := strings.Join(f.fieldStrings(js.Fields...), "\n        ")
-		formatted := fmt.Sprintf("type %s struct {\n        %s\n}", js.Name, fieldStrings)
+		if js.Inline {
+			formatted = fmt.Sprintf("struct {\n        %s\n}", fieldStrings)
+		} else {
+			formatted = fmt.Sprintf("type %s struct {\n        %s\n}", js.Name, fieldStrings)
+		}
+		// formatted := fmt.Sprintf("type %s struct {\n        %s\n}", js.Name, fieldStrings)
 		structStrings = append(structStrings, formatted)
 
 		// we've already printed out all the relevant structs inline
@@ -65,17 +72,14 @@ func (f *Formatter) FormatString(input ...*JSONStruct) (string, error) {
 		// out too
 		for _, field := range js.Fields {
 			if field.IsStruct() || field.IsStructSlice() {
-				formatted, err := f.FormatString(field.GetStruct())
-				if err != nil {
-					return "", fmt.Errorf("failed to format child struct %q: %w", field.Name(), err)
-				}
+				formatted := f.FormatStruct(field.GetStruct())
 
 				structStrings = append(structStrings, formatted)
 			}
 		}
 	}
 
-	return strings.Join(structStrings, "\n\n"), nil
+	return strings.Join(structStrings, "\n\n")
 }
 
 func (f *Formatter) fieldStrings(fields ...*Field) []string {
@@ -103,19 +107,29 @@ func (f *Formatter) fieldStrings(fields ...*Field) []string {
 		}
 
 		for _, field := range bucket {
-			// need to left-justify the field info so it spits things out like gofmt would
+			var formatted string
 
-			formatted := fmt.Sprintf("%-*s%-*s",
-				longestName, field.Name(),
-				longestType, field.Type())
-
-			if f.ValueComments {
-				formatted = fmt.Sprintf("%s%-*s%s",
-					formatted,
+			switch {
+			case field.IsStruct() && f.InlineStructs:
+				js := field.GetStruct().SetName("").SetInline()
+				formatted = fmt.Sprintf("%-*s%-*s %s",
+					longestName, field.Name(),
+					longestType, f.FormatStruct(js),
+					field.Tag(),
+				)
+			case f.ValueComments:
+				formatted = fmt.Sprintf("%-*s%-*s%-*s%s",
+					longestName, field.Name(),
+					longestType, field.Type(),
 					longestTag, field.Tag(),
-					field.Comment())
-			} else {
-				formatted = fmt.Sprintf("%s%s", formatted, field.Tag())
+					field.Comment(),
+				)
+			default:
+				formatted = fmt.Sprintf("%-*s%-*s%s",
+					longestName, field.Name(),
+					longestType, field.Type(),
+					field.Tag(),
+				)
 			}
 
 			results = append(results, formatted)

@@ -49,18 +49,25 @@ func (f *Formatter) FormatStruct(input ...*JSONStruct) string {
 
 	for _, js := range input {
 		if f.SortFields {
-			js.Fields.SortAlphabetically()
+			js.fields.SortAlphabetically()
 		}
 
 		var formatted string
 
-		fieldStrings := strings.Join(f.fieldStrings(js.Fields...), "\n        ")
-		if js.Inline {
-			formatted = fmt.Sprintf("struct {\n        %s\n}", fieldStrings)
+		if f.InlineStructs && js.NestLevel() > 0 {
+			spacing := strings.Repeat(" ", 8*js.NestLevel())
+			fields := js.Fields()
+			for i, field := range fields {
+				fmt.Printf("FIELD %d: %+v\n", i, field)
+			}
+			fieldStrings := strings.Join(f.fieldStrings(fields...), fmt.Sprintf("\n%s", spacing))
+			fmt.Printf("FIELD STRINGS: %s\n", fieldStrings)
+			formatted = fmt.Sprintf("struct {\n        %s\n%s}", fieldStrings, spacing)
 		} else {
-			formatted = fmt.Sprintf("type %s struct {\n        %s\n}", js.Name, fieldStrings)
+			fieldStrings := strings.Join(f.fieldStrings(js.Fields()...), "\n        ")
+			formatted = fmt.Sprintf("type %s struct {\n        %s\n}", js.Name(), fieldStrings)
 		}
-		// formatted := fmt.Sprintf("type %s struct {\n        %s\n}", js.Name, fieldStrings)
+
 		structStrings = append(structStrings, formatted)
 
 		// we've already printed out all the relevant structs inline
@@ -70,7 +77,7 @@ func (f *Formatter) FormatStruct(input ...*JSONStruct) string {
 
 		// if we're not inlining structs, find all the fields of type struct / []struct and print their type definitions
 		// out too
-		for _, field := range js.Fields {
+		for _, field := range js.fields {
 			if field.IsStruct() || field.IsStructSlice() {
 				formatted := f.FormatStruct(field.GetStruct())
 
@@ -111,10 +118,13 @@ func (f *Formatter) fieldStrings(fields ...*Field) []string {
 
 			switch {
 			case field.IsStruct() && f.InlineStructs:
-				js := field.GetStruct().SetName("").SetInline()
+				js := field.GetStruct()
+				fmt.Printf("FIELD STRUCT: %+v\n", js)
+				formattedStruct := f.FormatStruct(js)
+				fmt.Printf("FORMATTED STRUCT: %q\n", formattedStruct)
 				formatted = fmt.Sprintf("%-*s%-*s %s",
 					longestName, field.Name(),
-					longestType, f.FormatStruct(js),
+					longestType, formattedStruct,
 					field.Tag(),
 				)
 			case f.ValueComments:
@@ -152,11 +162,19 @@ func (f *Formatter) fieldBuckets(fields ...*Field) [][]*Field {
 
 	for _, field := range fields {
 		if field.IsStruct() {
+			fmt.Printf("ADDING STRUCT FIELD (%+v) TO CURRENT BUCKET, ADDING NEW BUCKET\n", field)
 			bucket = append(bucket, field)
-			buckets = append(buckets, bucket)
+			buckets = append(buckets, bucket[:])
 			bucket = []*Field{}
 		} else {
 			bucket = append(bucket, field)
+		}
+	}
+
+	for i, bucket := range buckets {
+		fmt.Printf("Bucket %d (len %d):\n", i, len(bucket))
+		for j, item := range bucket {
+			fmt.Printf("Item %d:\n%+v\n", j, item)
 		}
 	}
 

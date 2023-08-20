@@ -204,7 +204,7 @@ func (f Field) IsStruct() bool {
 	return kind == reflect.Struct
 }
 
-// GetStruct gets a the JSONStruct in RawValue if f is a struct, otherwise returns an empty JSONStruct.
+// GetStruct gets a the JSONStruct in RawValue if f is a struct or slice of struct, otherwise returns nil.
 func (f Field) GetStruct() *JSONStruct {
 	switch {
 	case f.IsStruct():
@@ -241,7 +241,7 @@ func (f Field) GetSliceStruct() *JSONStruct {
 	// we have a slice of structs, each of which may or may not contain the full set of fields
 	// TODO: use this logic to handle JSON inputs of type []object
 	for _, js := range jss {
-		for _, field := range js.Fields {
+		for _, field := range js.fields {
 			alreadySeen := false
 
 			for i, foundField := range foundFields {

@@ -3,6 +3,8 @@ package jsonstruct
 import (
 	"fmt"
 	"strings"
+
+	"mvdan.cc/gofumpt/format"
 )
 
 // FormatterOptions defines how the Formatter will produce its output.
@@ -41,142 +43,74 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 	return f, nil
 }
 
-func (f *Formatter) FormatStruct(input ...*JSONStruct) string {
-	structStrings := []string{}
+func (f *Formatter) FormatStructs(inputs ...*JSONStruct) (string, error) {
+	structStr := "package temp \n"
 
-	// TODO: handle arrays containing structs of the same kind differently
-	// TODO: handle inline structs
-
-	for _, js := range input {
-		if f.SortFields {
-			js.fields.SortAlphabetically()
+	for i, input := range inputs {
+		formatted, err := f.formatStructNesting(0, input)
+		if err != nil {
+			return "", fmt.Errorf("failed to format struct %d: %w", i, err)
 		}
 
-		var formatted string
+		structStr += formatted
 
-		if f.InlineStructs && js.NestLevel() > 0 {
-			spacing := strings.Repeat(" ", 8*js.NestLevel())
-			fields := js.Fields()
-			for i, field := range fields {
-				fmt.Printf("FIELD %d: %+v\n", i, field)
-			}
-			fieldStrings := strings.Join(f.fieldStrings(fields...), fmt.Sprintf("\n%s", spacing))
-			fmt.Printf("FIELD STRINGS: %s\n", fieldStrings)
-			formatted = fmt.Sprintf("struct {\n        %s\n%s}", fieldStrings, spacing)
-		} else {
-			fieldStrings := strings.Join(f.fieldStrings(js.Fields()...), "\n        ")
-			formatted = fmt.Sprintf("type %s struct {\n        %s\n}", js.Name(), fieldStrings)
-		}
-
-		structStrings = append(structStrings, formatted)
-
-		// we've already printed out all the relevant structs inline
+		// we don't need to print all the fields' structs
 		if f.InlineStructs {
 			continue
 		}
 
-		// if we're not inlining structs, find all the fields of type struct / []struct and print their type definitions
-		// out too
-		for _, field := range js.fields {
+		for _, field := range input.Fields() {
 			if field.IsStruct() || field.IsStructSlice() {
-				formatted := f.FormatStruct(field.GetStruct())
+				formatted, err := f.FormatStructs(field.GetStruct())
+				if err != nil {
+					return "", fmt.Errorf("failed to format nested struct: %w", err)
+				}
 
-				structStrings = append(structStrings, formatted)
+				structStr += formatted
 			}
 		}
 	}
 
-	return strings.Join(structStrings, "\n\n")
+	formatted, err := format.Source([]byte(structStr), format.Options{})
+	if err != nil {
+		fmt.Printf("INPUT:\n%s\n", structStr)
+		return "", fmt.Errorf("failed to run gofumpt on generated structs: %w", err)
+	}
+
+	structStr = strings.ReplaceAll(string(formatted), "package temp\n", "")
+
+	return structStr, nil
 }
 
-func (f *Formatter) fieldStrings(fields ...*Field) []string {
-	var (
-		results = []string{}
-		buckets = f.fieldBuckets(fields...)
-	)
+func (f *Formatter) formatStructNesting(nest int, input *JSONStruct) (string, error) {
+	structStr := ""
 
-	// for each bucket, set field spacing based on longest name/type/tag of its neighbors
-	for _, bucket := range buckets {
-		var longestName, longestType, longestTag int
-
-		for _, field := range bucket {
-			if name := field.Name(); len(name) > longestName-1 {
-				longestName = len(name) + 1
-			}
-
-			if typ := field.Type(); len(typ) > longestType-1 {
-				longestType = len(typ) + 1
-			}
-
-			if tag := field.Tag(); len(tag) > longestTag-1 {
-				longestTag = len(tag) + 1
-			}
-		}
-
-		for _, field := range bucket {
-			var formatted string
-
-			switch {
-			case field.IsStruct() && f.InlineStructs:
-				js := field.GetStruct()
-				fmt.Printf("FIELD STRUCT: %+v\n", js)
-				formattedStruct := f.FormatStruct(js)
-				fmt.Printf("FORMATTED STRUCT: %q\n", formattedStruct)
-				formatted = fmt.Sprintf("%-*s%-*s %s",
-					longestName, field.Name(),
-					longestType, formattedStruct,
-					field.Tag(),
-				)
-			case f.ValueComments:
-				formatted = fmt.Sprintf("%-*s%-*s%-*s%s",
-					longestName, field.Name(),
-					longestType, field.Type(),
-					longestTag, field.Tag(),
-					field.Comment(),
-				)
-			default:
-				formatted = fmt.Sprintf("%-*s%-*s%s",
-					longestName, field.Name(),
-					longestType, field.Type(),
-					field.Tag(),
-				)
-			}
-
-			results = append(results, formatted)
-		}
+	if f.InlineStructs && nest > 0 {
+		structStr += fmt.Sprintf("%s struct {\n", input.Name())
+	} else {
+		structStr += fmt.Sprintf("type %s struct {\n", input.Name())
 	}
 
-	return results
-}
+	for _, field := range input.Fields() {
+		if f.InlineStructs && field.IsStruct() {
+			inlineStruct, err := f.formatStructNesting(nest+1, field.GetStruct())
+			if err != nil {
+				return "", fmt.Errorf("failed to get nested struct: %w", err)
+			}
 
-func (f *Formatter) fieldBuckets(fields ...*Field) [][]*Field {
-	// TODO: handle the case of comments on previous lines when that's a possibility
-	// TODO: handle case of only some fields being commented? means name/type formatted the same, tag left-justified to
-	// width of nearby tags for comment spacing (honestly, I think my way looks better...)
-	if !f.InlineStructs {
-		return [][]*Field{fields}
-	}
-
-	buckets := [][]*Field{}
-	bucket := []*Field{}
-
-	for _, field := range fields {
-		if field.IsStruct() {
-			fmt.Printf("ADDING STRUCT FIELD (%+v) TO CURRENT BUCKET, ADDING NEW BUCKET\n", field)
-			bucket = append(bucket, field)
-			buckets = append(buckets, bucket[:])
-			bucket = []*Field{}
+			structStr += inlineStruct
 		} else {
-			bucket = append(bucket, field)
+			structStr += fmt.Sprintf("%s\t%s\t%s", field.Name(), field.Type(), field.Tag())
 		}
+
+		if f.ValueComments {
+			structStr += fmt.Sprintf("\t%s", field.Comment())
+		}
+
+		structStr += "\n"
 	}
 
-	for i, bucket := range buckets {
-		fmt.Printf("Bucket %d (len %d):\n", i, len(bucket))
-		for j, item := range bucket {
-			fmt.Printf("Item %d:\n%+v\n", j, item)
-		}
-	}
+	structStr += "}\n\n"
 
-	return buckets
+	return structStr, nil
 }

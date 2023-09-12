@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+var jsonRawMessage = "*json.RawMessage"
+
 // Field represents a single struct field.
 type Field struct {
 	goName       string
@@ -46,6 +48,10 @@ func (f Field) Name() string {
 
 // Tag returns the JSON tag as it will be rendered in the final struct.
 func (f Field) Tag() string {
+	if f.originalName == f.Name() {
+		return ""
+	}
+
 	if f.optional {
 		return fmt.Sprintf("`json:\"%s,omitempty\"`", f.originalName)
 	}
@@ -71,7 +77,7 @@ func (f Field) Type() string {
 	}
 
 	if f.rawValue == nil {
-		return "*json.RawMessage"
+		return jsonRawMessage
 	}
 
 	if f.IsSlice() {
@@ -108,7 +114,7 @@ func (f Field) SliceType() string {
 		}
 
 		if !idxVal.IsValid() {
-			sliceType = "*json.RawMessage"
+			sliceType = jsonRawMessage
 
 			break
 		}
@@ -116,7 +122,7 @@ func (f Field) SliceType() string {
 		idxType := idxVal.Type()
 
 		if sliceType != "" && idxType.String() != sliceType {
-			sliceType = "*json.RawMessage"
+			sliceType = jsonRawMessage
 
 			break
 		}
@@ -181,8 +187,10 @@ func (f Field) SimpleSliceValues() []string {
 // Comment returns the string used for example value comments.
 func (f Field) Comment() string {
 	comment := ""
+	cleanVal := strings.ReplaceAll(f.Value(), "\n", "\\n")
+
 	if val := f.Value(); val != "" {
-		comment = fmt.Sprintf("// Example: %s", f.Value())
+		comment = fmt.Sprintf("// Example: %s", cleanVal)
 	}
 
 	if len(comment) > 50 {
@@ -194,6 +202,10 @@ func (f Field) Comment() string {
 
 // IsStruct returns true if RawValue is either a struct or a pointer to a struct.
 func (f Field) IsStruct() bool {
+	if f.rawValue == nil {
+		return false
+	}
+
 	typ := reflect.TypeOf(f.rawValue)
 	kind := typ.Kind()
 

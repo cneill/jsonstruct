@@ -12,6 +12,10 @@ import (
 func GetGoName(input string) string {
 	var cleaned strings.Builder
 
+	if input == "." {
+		return "Dot" // special case
+	}
+
 	// remove garbage characters, replace separators with ' '
 	for _, r := range input {
 		if isAlphaNum(r) {
@@ -40,6 +44,10 @@ func GetGoName(input string) string {
 
 	if len(result) > 0 && isNumber(rune(result[0])) {
 		result = "JSON" + result
+	}
+
+	if len(result) == 0 {
+		return "Unknown"
 	}
 
 	return result

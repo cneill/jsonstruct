@@ -20,7 +20,9 @@ func New() *JSONStruct {
 
 // SetName sets the name to be used as a type for the JSONStruct.
 func (j *JSONStruct) SetName(name string) *JSONStruct {
-	j.name = name
+	if j != nil {
+		j.name = name
+	}
 
 	return j
 }
@@ -44,7 +46,9 @@ func (j *JSONStruct) Fields() Fields { return j.fields }
 
 // AddInlineLevels recursively sets the inlineLevel value for this JSONStruct, as well as its struct fields.
 func (j *JSONStruct) SetNestLevel(i int) *JSONStruct {
-	j.nestLevel = i
+	if j != nil {
+		j.nestLevel = i
+	}
 
 	return j
 }
@@ -52,7 +56,9 @@ func (j *JSONStruct) SetNestLevel(i int) *JSONStruct {
 func (j *JSONStruct) NestLevel() int { return j.nestLevel }
 
 func (j *JSONStruct) SetInSlice() *JSONStruct {
-	j.inSlice = true
+	if j != nil {
+		j.inSlice = true
+	}
 
 	return j
 }

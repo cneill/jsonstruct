@@ -27,7 +27,7 @@ func TestFormatString(t *testing.T) {
 			input: jsonstruct.New().AddFields(
 				jsonstruct.NewField().SetName("a").SetValue(int64(1)),
 			),
-			expected: "type Simple struct {\n        A int64 `json:\"a\"`\n}",
+			expected: "\ntype Simple struct {\n\tA int64 `json:\"a\"`\n}\n",
 		},
 	}
 
@@ -39,7 +39,8 @@ func TestFormatString(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			test.input.SetName(jsonstruct.GetGoName(test.name))
-			output := formatter.FormatStruct(test.input)
+			output, err := formatter.FormatStructs(test.input)
+			assert.Nil(t, err)
 			assert.Equal(t, test.expected, output)
 		})
 	}
@@ -52,32 +53,37 @@ func TestFormatStringFiles(t *testing.T) {
 	assert.Nil(t, err)
 
 	for _, testFilePath := range testFilePaths {
-		testFileDir, testFileName := path.Split(testFilePath)
-		expectedFileName := fmt.Sprintf("%s_result.txt", strings.TrimSuffix(testFileName, path.Ext(testFileName)))
-		expectedFilePath := path.Join(testFileDir, expectedFileName)
+		testFilePath := testFilePath
+		t.Run(testFilePath, func(t *testing.T) {
+			t.Parallel()
+			testFileDir, testFileName := path.Split(testFilePath)
+			expectedFileName := fmt.Sprintf("%s_result.txt", strings.TrimSuffix(testFileName, path.Ext(testFileName)))
+			expectedFilePath := path.Join(testFileDir, expectedFileName)
 
-		testFile, err := os.Open(testFilePath)
-		assert.Nil(t, err)
+			testFile, err := os.Open(testFilePath)
+			assert.Nil(t, err)
 
-		defer testFile.Close()
+			defer testFile.Close()
 
-		expectedContents, err := os.ReadFile(expectedFilePath)
-		assert.Nil(t, err)
+			expectedContents, err := os.ReadFile(expectedFilePath)
+			assert.Nil(t, err)
 
-		parser := jsonstruct.NewParser(testFile, slog.Default())
-		js, err := parser.Start()
-		assert.Nil(t, err)
+			parser := jsonstruct.NewParser(testFile, slog.Default())
+			js, err := parser.Start()
+			assert.Nil(t, err)
 
-		formatterOpts := &jsonstruct.FormatterOptions{}
-		if strings.Contains(testFileName, "comment") {
-			formatterOpts.ValueComments = true
-		}
+			formatterOpts := &jsonstruct.FormatterOptions{}
+			if strings.Contains(testFileName, "comment") {
+				formatterOpts.ValueComments = true
+			}
 
-		formatter, err := jsonstruct.NewFormatter(formatterOpts)
-		assert.Nil(t, err)
+			formatter, err := jsonstruct.NewFormatter(formatterOpts)
+			assert.Nil(t, err)
 
-		output := formatter.FormatStruct(js...)
+			output, err := formatter.FormatStructs(js...)
+			assert.Nil(t, err)
 
-		assert.Equal(t, strings.TrimSpace(string(expectedContents)), output)
+			assert.Equal(t, strings.TrimSpace(string(expectedContents)), strings.TrimSpace(output))
+		})
 	}
 }

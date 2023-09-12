@@ -85,10 +85,10 @@ func TestParser(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.Equal(t, 1, len(structs))
-			assert.Equal(t, len(test.expected.GetFields()), len(structs[0].GetFields()))
+			assert.Equal(t, len(test.expected.Fields()), len(structs[0].Fields()))
 
-			expectedFields := test.expected.GetFields()
-			outputFields := structs[0].GetFields()
+			expectedFields := test.expected.Fields()
+			outputFields := structs[0].Fields()
 
 			for i := 0; i < len(expectedFields); i++ {
 				assert.Equal(t, expectedFields[i], outputFields[i])

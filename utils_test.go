@@ -22,7 +22,7 @@ func TestGetGoName(t *testing.T) {
 		{"weirdcase", "ThiSiSaNumber2", "ThiSiSaNumber2"},
 		{"separators_with_initialism", "This_Is_An_ID", "ThisIsAnID"},
 		{"underscore_start", "_underscored", "Underscored"},
-		{"garbage_characters", "($@%)@$%)(@", ""},
+		{"garbage_characters", "($@%)@$%)(@", "Unknown"},
 		{"garbage_characters_with_content", "@)(#$)@(#$)@#($garbage@#)$@)#($@)#($", "Garbage"},
 		{"garbage_separator", "@t@e@s@t", "Test"},
 		{"spaces", "       spaces", "Spaces"},

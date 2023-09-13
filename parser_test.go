@@ -52,17 +52,22 @@ func TestParser(t *testing.T) {
 			),
 			errors: false,
 		},
-		// TODO: make this work by handling arrays of objects differently and not just spewing every example
-		/*
-			{
-				name:  "array_of_objects",
-				input: `[{"test": 1}, {"test": 2}, {"test": 3}]`,
-				expected: jsonstruct.New().SetName("").AddFields(
-					jsonstruct.NewField().SetName("test").SetValue(int64(1)),
-				),
-				errors: false,
-			},
-		*/
+		{
+			name:  "simple_array_of_objects",
+			input: `[{"test": 1}, {"test": 2}, {"test": 3}]`,
+			expected: jsonstruct.New().SetName("").AddFields(
+				jsonstruct.NewField().SetName("test").SetValue(int64(1)),
+			),
+			errors: false,
+		},
+		{
+			name:  "harder_array_of_objects",
+			input: `[{"test": 1}, {"test": "string"}]`,
+			expected: jsonstruct.New().SetName("").AddFields(
+				jsonstruct.NewField().SetName("test").SetValue(int64(1)).SetJSONRaw(),
+			),
+			errors: false,
+		},
 		{
 			name:   "int_key",
 			input:  `{1: 2}`,

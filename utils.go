@@ -78,21 +78,6 @@ func isSeparator(r rune) bool {
 	return r == '_' || r == '.' || r == '-' || r == ' '
 }
 
-func anySliceToJSONStructs(input []any) (JSONStructs, error) {
-	result := JSONStructs{}
-
-	for i, item := range input {
-		js, ok := item.(*JSONStruct)
-		if !ok {
-			return nil, fmt.Errorf("item %d was not a *JSONStruct", i)
-		}
-
-		result = append(result, js)
-	}
-
-	return result, nil
-}
-
 func simpleAnyToString(input any) string {
 	switch val := input.(type) {
 	case bool:

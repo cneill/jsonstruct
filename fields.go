@@ -16,6 +16,7 @@ type Field struct {
 	originalName string
 	rawValue     any
 	optional     bool
+	isJSONRaw    bool
 }
 
 func NewField() *Field {
@@ -37,6 +38,12 @@ func (f *Field) SetValue(value any) *Field {
 
 func (f *Field) SetOptional() *Field {
 	f.optional = true
+
+	return f
+}
+
+func (f *Field) SetJSONRaw() *Field {
+	f.isJSONRaw = true
 
 	return f
 }
@@ -65,6 +72,10 @@ func (f Field) Tag() string {
 
 // Type returns the type of the field as it will be rendered in the final struct.
 func (f Field) Type() string {
+	if f.rawValue == nil || f.isJSONRaw {
+		return jsonRawMessage
+	}
+
 	switch f.rawValue.(type) {
 	case int64:
 		return "int64"
@@ -78,10 +89,6 @@ func (f Field) Type() string {
 		return "string"
 	case bool:
 		return "bool"
-	}
-
-	if f.rawValue == nil {
-		return jsonRawMessage
 	}
 
 	if f.IsSlice() {
@@ -257,14 +264,18 @@ func (f Field) GetStruct() *JSONStruct {
 }
 
 func (f Field) GetSliceStruct() *JSONStruct {
-	result := (&JSONStruct{}).SetName(f.Name())
-
 	anySlice, ok := f.rawValue.([]any)
 	if !ok {
 		return nil
 	}
 
-	jStructs, err := anySliceToJSONStructs(anySlice)
+	return getSliceStruct(anySlice).SetName(f.Name())
+}
+
+func getSliceStruct(input []any) *JSONStruct {
+	result := &JSONStruct{}
+
+	jStructs, err := anySliceToJSONStructs(input)
 	if err != nil {
 		return nil
 	}
@@ -272,28 +283,31 @@ func (f Field) GetSliceStruct() *JSONStruct {
 	// foundFields contains the first instance of a field, while fieldCounts reports the number of structs containing it
 	// have to use synced slices here to avoid the reordering that would occur with a map
 	foundFields := []*Field{}
+	fieldTypes := []string{}
 	fieldCounts := []int{}
 
 	// have a slice of structs, each of which may or may not contain the full set of fields - walk each and find the
 	// fields that don't reoccur
-	// TODO: use this logic to handle JSON inputs of type []object - 9/12/23: wtf does this mean
 	for _, jStruct := range jStructs {
-		for _, field := range jStruct.fields {
-			alreadySeen := false
+		for _, field := range jStruct.Fields() {
+			foundIndex := -1
 
 			for i, foundField := range foundFields {
-				if field.Equals(foundField) {
+				if field.OriginalName() == foundField.OriginalName() {
 					fieldCounts[i]++
 
-					alreadySeen = true
+					foundIndex = i
 
 					break
 				}
 			}
 
-			if !alreadySeen {
+			if foundIndex == -1 {
 				foundFields = append(foundFields, field)
+				fieldTypes = append(fieldTypes, field.Type())
 				fieldCounts = append(fieldCounts, 1)
+			} else if field.Type() != fieldTypes[foundIndex] {
+				foundFields[foundIndex].SetJSONRaw()
 			}
 		}
 	}

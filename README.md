@@ -65,19 +65,19 @@ Flags:
 }
 ```
 
-The above JSON object Will produce this output:
+If passed in through stdin, the above JSON object will produce this output:
 
 ```golang
-type Test struct {
-        StringArray  []string   `json:"string_array"`
-        BlahBlahBlah string     `json:"blahBlahBlah"`
-        Nothing      string     `json:"nothing"`
-        Currency     string     `json:"currency"`
-        Amount       float64    `json:"amount"`
-        Map          *Map       `json:"map"`
-        Array        []float64  `json:"array"`
-        CamelKey     string     `json:"CamelKey"`
-        Structs      []*Structs `json:"structs"`
+type Stdin1 struct {
+        Currency     string   `json:"currency"`
+        Amount       float64  `json:"amount"`
+        Map          *Map     `json:"map"`
+        Array        []int64  `json:"array"`
+        StringArray  []string `json:"string_array"`
+        CamelKey     string
+        BlahBlahBlah string           `json:"blahBlahBlah"`
+        Structs      []*Structs       `json:"structs"`
+        Nothing      *json.RawMessage `json:"nothing"`
 }
 
 type Map struct {
@@ -113,9 +113,9 @@ type Structs struct {
 ```
 
 ```golang
-type ArrayTest struct {
-	Stuff          *json.RawMessage `json:"stuff"`
-	DifferentStuff string           `json:"differentStuff,omitempty"`
+type Stdin1 struct {
+        Stuff          *json.RawMessage `json:"stuff"`
+        DifferentStuff string           `json:"differentStuff,omitempty"`
 }
 ```
 
@@ -123,8 +123,6 @@ type ArrayTest struct {
 
 * When an array of JSON objects is detected, any keys that are provided in some objects but not others
   will get the `,omitempty` flag
-* Tries to detect `float64` and `int64`, but there's a bug where floats like `1.0` will be treated as
-  ints (floats like `1.2` will be correctly detected as such)
 * When the same field is detected in multiple objects in a JSON array with different value types, the
   Go type will be `*json.RawMessage`, which will contain the raw bytes of the field to allow for
   different types

@@ -66,12 +66,9 @@ func (p *Parser) Start() (JSONStructs, error) {
 				return nil, fmt.Errorf("failed to parse array: %w", err)
 			}
 
-			structs, err := anySliceToJSONStructs(jsRaw)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse JSON structs: %w", err)
-			}
+			js := getSliceStruct(jsRaw)
 
-			results = append(results, structs...)
+			results = append(results, js)
 		}
 	}
 

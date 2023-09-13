@@ -1,5 +1,7 @@
 package jsonstruct
 
+import "fmt"
+
 // JSONStruct contains the raw information about a JSON object to be rendered as a Go struct.
 type JSONStruct struct {
 	name   string
@@ -65,3 +67,18 @@ func (j *JSONStruct) SetInSlice() *JSONStruct {
 
 // JSONStructs is a convenience type for a slice of JSONStruct structs.
 type JSONStructs []*JSONStruct
+
+func anySliceToJSONStructs(input []any) (JSONStructs, error) {
+	result := JSONStructs{}
+
+	for i, item := range input {
+		js, ok := item.(*JSONStruct)
+		if !ok {
+			return nil, fmt.Errorf("item %d was not a *JSONStruct", i)
+		}
+
+		result = append(result, js)
+	}
+
+	return result, nil
+}

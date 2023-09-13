@@ -2,15 +2,22 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/cneill/jsonstruct"
 
 	"github.com/urfave/cli/v2"
 )
 
+//nolint:gochecknoglobals // c'mon, it's the logger
+var log *slog.Logger
+
 func run() error {
+	logHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+	log = slog.New(logHandler)
+
 	app := &cli.App{
 		Name:        "jsonstruct",
 		Action:      genStructs,
@@ -34,14 +41,37 @@ func run() error {
 				Usage:   "sort the fields in alphabetical order; default behavior is to mirror input",
 			},
 			&cli.BoolFlag{
-				Name:    "inline",
+				Name:    "inline-structs",
 				Aliases: []string{"i"},
 				Usage:   "use inline structs instead of creating different types for each object",
 			},
+			&cli.BoolFlag{
+				Name:    "print-filenames",
+				Aliases: []string{"f"},
+				Usage:   "print the filename above the structs defined within",
+			},
+			&cli.BoolFlag{
+				Name:  "debug",
+				Value: false,
+				Usage: "enable debug logs",
+			},
+		},
+		Before: func(ctx *cli.Context) error {
+			// set debug logging
+			if ctx.Bool("debug") {
+				logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+				log = slog.New(logHandler)
+			}
+
+			return nil
 		},
 	}
 
-	return app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		return fmt.Errorf("ERROR: %w", err)
+	}
+
+	return nil
 }
 
 func isStdin() bool {
@@ -51,38 +81,81 @@ func isStdin() bool {
 }
 
 func genStructs(ctx *cli.Context) error {
-	jsp := &jsonstruct.Producer{
+	inputs, err := getInputs(ctx)
+	if err != nil {
+		return err
+	}
+
+	formatter, err := jsonstruct.NewFormatter(&jsonstruct.FormatterOptions{
 		SortFields:    ctx.Bool("sort-fields"),
 		ValueComments: ctx.Bool("value-comments"),
-		Name:          ctx.String("name"),
+		InlineStructs: ctx.Bool("inline-structs"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set up formatter: %w", err)
 	}
 
-	results := []*jsonstruct.JSONStruct{}
+	for _, input := range inputs {
+		defer func() {
+			input.Close()
 
-	if isStdin() {
-		structs, err := jsp.StructsFromReader("Stdin", os.Stdin)
+			log.Debug("closed file", "file", input.Name())
+		}()
+
+		p := jsonstruct.NewParser(input, log)
+
+		results, err := p.Start()
 		if err != nil {
-			return fmt.Errorf("failed to parse stdin: %w", err)
+			return fmt.Errorf("failed to parse input %q: %w", input.Name(), err)
 		}
 
-		results = append(results, structs...)
-	} else {
-		structs, err := jsp.StructsFromExampleFiles(ctx.Args().Slice()...)
-		if err != nil {
-			return err
-		}
-		results = append(results, structs...)
-	}
+		goFileName := jsonstruct.GetFileGoName(input.Name())
 
-	for _, result := range results {
-		fmt.Println(result.String() + "\n")
+		for i := 0; i < len(results); i++ {
+			structName := fmt.Sprintf("%s%d", goFileName, i+1)
+			results[i].SetName(structName)
+		}
+
+		if ctx.Bool("print-filenames") {
+			spacer := strings.Repeat("=", len(input.Name()))
+			fmt.Printf("// %s\n// %s\n// %s\n", spacer, input.Name(), spacer)
+		}
+
+		result, err := formatter.FormatStructs(results...)
+		if err != nil {
+			return fmt.Errorf("failed to format structs: %w", err)
+		}
+
+		fmt.Printf("%s\n", result)
 	}
 
 	return nil
 }
 
+func getInputs(ctx *cli.Context) ([]*os.File, error) {
+	inputs := []*os.File{}
+
+	if isStdin() {
+		inputs = append(inputs, os.Stdin)
+
+		log.Debug("got JSON input from stdin")
+	} else {
+		for _, fileName := range ctx.Args().Slice() {
+			file, err := os.Open(fileName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open file %q: %w", fileName, err)
+			}
+			log.Debug("opened file to read JSON structs", "file", fileName)
+
+			inputs = append(inputs, file)
+		}
+	}
+
+	return inputs, nil
+}
+
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("ERROR: %v\n", err)
+		log.Error("failed to execute", "err", err)
 	}
 }

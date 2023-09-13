@@ -1,0 +1,20 @@
+type JSONStruct struct {
+	TestBool           bool      `json:"test_bool"`
+	TestInt64          int64     `json:"test_int64"`
+	TestFloat64        float64   `json:"test_float64"`
+	TestString         string    `json:"test_string"`
+	TestArrayOfBool    []bool    `json:"test_array_of_bool"`
+	TestArrayOfInt64   []int64   `json:"test_array_of_int64"`
+	TestArrayOfFloat64 []float64 `json:"test_array_of_float64"`
+	TestArrayOfString  []string  `json:"test_array_of_string"`
+	TestStruct         struct {
+		TestString        string   `json:"test_string"`
+		TestArrayOfString []string `json:"test_array_of_string"`
+	} `json:"test_struct"`
+	TestArrayOfStruct []struct {
+		TestString         string `json:"test_string"`
+		TestOptionalString string `json:"test_optional_string,omitempty"`
+	} `json:"test_array_of_struct"`
+	TestGarbageArray    []*json.RawMessage `json:"test_garbage_array"`
+	TerribleNameForAKey string             `json:"terrible-name.for_a.key"`
+}

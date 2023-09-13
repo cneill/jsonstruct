@@ -28,6 +28,7 @@ func TestGetGoName(t *testing.T) {
 		{"spaces", "       spaces", "Spaces"},
 		{"multiple_spaces", "here are some spaces", "HereAreSomeSpaces"},
 		{"leading_number", "0", "JSON0"},
+		{"dot_special_case", ".", "Dot"},
 	}
 
 	for _, test := range tests {
@@ -35,8 +36,7 @@ func TestGetGoName(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			output := jsonstruct.GetGoName(test.input)
-			assert.Equal(t, test.expected, output)
+			assert.Equal(t, test.expected, jsonstruct.GetGoName(test.input))
 		})
 	}
 }
@@ -65,4 +65,28 @@ func FuzzGetGoName(f *testing.F) {
 		transformed := jsonstruct.GetGoName(input)
 		assert.True(t, validRegex.MatchString(transformed) || transformed == "")
 	})
+}
+
+func TestGetFileGoName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"simple", "file_name.json", "FileName"},
+		{"path", "/path/to/file.json", "File"},
+		{"path_no_extension", "/path/to/file", "File"},
+		// TODO: handle multiple extensions {"json.gz", "file_name.json.gz", "FileName"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, test.expected, jsonstruct.GetFileGoName(test.input))
+		})
+	}
 }

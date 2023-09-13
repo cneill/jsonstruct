@@ -86,7 +86,6 @@ func (f *Formatter) formatStructNesting(nest int, input *JSONStruct) (string, er
 	structStr := ""
 
 	if f.InlineStructs && nest > 0 {
-		// structStr += fmt.Sprintf("%s struct {\n", input.Name())
 		structStr += " {\n"
 	} else {
 		structStr += fmt.Sprintf("type %s struct {\n", input.Name())
@@ -104,14 +103,13 @@ func (f *Formatter) formatStructNesting(nest int, input *JSONStruct) (string, er
 				sType = "[]struct"
 			}
 
-			// structStr += field.Name() + inlineStruct + " " + field.Tag()
 			structStr += fmt.Sprintf("%s %s %s %s", field.Name(), sType, inlineStruct, field.Tag())
 		} else {
-			structStr += fmt.Sprintf("%s\t%s\t%s", field.Name(), field.Type(), field.Tag())
+			structStr += fmt.Sprintf("%s %s %s", field.Name(), field.Type(), field.Tag())
 		}
 
 		if f.ValueComments {
-			structStr += fmt.Sprintf("\t%s", field.Comment())
+			structStr += fmt.Sprintf(" %s", field.Comment())
 		}
 
 		structStr += "\n"

@@ -1,6 +1,6 @@
 # jsonstruct
 
-[![test](https://github.com/cneill/jsonstruct/actions/workflows/test.yaml/badge.svg)](https://github.com/cneill/jsonstruct/actions/workflows/test.yaml)
+[![Test and lint](https://github.com/cneill/jsonstruct/actions/workflows/test-and-lint.yaml/badge.svg)](https://github.com/cneill/jsonstruct/actions/workflows/test-and-lint.yaml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/cneill/jsonstruct.svg)](https://pkg.go.dev/github.com/cneill/jsonstruct)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cneill/jsonstruct)](https://goreportcard.com/report/github.com/cneill/jsonstruct)
 

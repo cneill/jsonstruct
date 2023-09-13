@@ -15,7 +15,7 @@ import (
 )
 
 func TestFormatString(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	tests := []struct {
 		name     string
@@ -55,7 +55,7 @@ func TestFormatStringFiles(t *testing.T) {
 	for _, testFilePath := range testFilePaths {
 		testFilePath := testFilePath
 		t.Run(testFilePath, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			testFileDir, testFileName := path.Split(testFilePath)
 			expectedFileName := fmt.Sprintf("%s_result.txt", strings.TrimSuffix(testFileName, path.Ext(testFileName)))
 			expectedFilePath := path.Join(testFileDir, expectedFileName)
@@ -69,7 +69,7 @@ func TestFormatStringFiles(t *testing.T) {
 			assert.Nil(t, err)
 
 			parser := jsonstruct.NewParser(testFile, slog.Default())
-			js, err := parser.Start()
+			jStruct, err := parser.Start()
 			assert.Nil(t, err)
 
 			formatterOpts := &jsonstruct.FormatterOptions{}
@@ -84,7 +84,7 @@ func TestFormatStringFiles(t *testing.T) {
 			formatter, err := jsonstruct.NewFormatter(formatterOpts)
 			assert.Nil(t, err)
 
-			output, err := formatter.FormatStructs(js...)
+			output, err := formatter.FormatStructs(jStruct...)
 			assert.Nil(t, err)
 
 			assert.Equal(t, strings.TrimSpace(string(expectedContents)), strings.TrimSpace(output))

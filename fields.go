@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var jsonRawMessage = "*json.RawMessage"
+const jsonRawMessage = "*json.RawMessage"
 
 // Field represents a single struct field.
 type Field struct {
@@ -95,21 +95,37 @@ func (f Field) Type() string {
 	return "any"
 }
 
+// SliceType returns the type of the slice this field represents.
 func (f Field) SliceType() string {
-	rawVal := reflect.ValueOf(f.rawValue)
+	// rawVal := reflect.ValueOf(f.rawValue)
 	rawType := reflect.TypeOf(f.rawValue)
 
 	if rawType.Kind() != reflect.Slice {
 		return ""
 	}
 
+	// we have a field that represents a struct, whose slice type is its name
 	if f.IsStructSlice() {
 		return fmt.Sprintf("[]*%s", f.Name())
 	}
 
-	var sliceType string
+	sliceType := getSliceType(f.rawValue)
 
+	return fmt.Sprintf("[]%s", sliceType)
+}
+
+func getSliceType(input any) string {
+	var (
+		rawVal = reflect.ValueOf(input)
+		// rawType   = reflect.TypeOf(input)
+		sliceType string
+	)
+
+	// walk the array's elements and figure out if they're all typed the same
+	// TODO: handle more than 2 levels of nesting...
 	for i := 0; i < rawVal.Len(); i++ {
+		var itemType string
+
 		idxVal := rawVal.Index(i)
 		kind := idxVal.Type().Kind()
 
@@ -124,19 +140,25 @@ func (f Field) SliceType() string {
 		}
 
 		idxType := idxVal.Type()
+		kind = idxType.Kind()
 
-		if sliceType != "" && idxType.String() != sliceType {
+		if kind == reflect.Slice {
+			itemType = getSliceType(idxVal.Interface())
+		} else {
+			itemType = fmt.Sprintf("[]%s", idxType.String())
+		}
+
+		// we have encountered multiple types for this field, have to accept anything
+		if sliceType != "" && itemType != sliceType {
 			sliceType = jsonRawMessage
 
 			break
 		}
 
-		// TODO: handle nested arrays better! they come out as [][]interface{} now
-
-		sliceType = idxType.String()
+		sliceType = itemType
 	}
 
-	return fmt.Sprintf("[]%s", sliceType)
+	return sliceType
 }
 
 // Value returns the string version of RawValue.
@@ -298,7 +320,11 @@ func (f Field) IsSlice() bool {
 }
 
 func (f Field) IsStructSlice() bool {
-	anySlice, ok := f.rawValue.([]any)
+	return isStructSlice(f.rawValue)
+}
+
+func isStructSlice(input any) bool {
+	anySlice, ok := input.([]any)
 	if !ok {
 		return false
 	}

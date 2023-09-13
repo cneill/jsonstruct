@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+//nolint:gochecknoglobals // c'mon, it's the logger
 var log *slog.Logger
 
 func run() error {
@@ -66,7 +67,11 @@ func run() error {
 		},
 	}
 
-	return app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		return fmt.Errorf("ERROR: %w", err)
+	}
+
+	return nil
 }
 
 func isStdin() bool {

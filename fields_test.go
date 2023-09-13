@@ -9,6 +9,7 @@ import (
 	"github.com/cneill/jsonstruct"
 )
 
+//nolint:gochecknoglobals // can't make it a const so what do
 var (
 	bigInt, _      = (&big.Int{}).SetString("9223372036854775808", 10)
 	bigFloat, _, _ = (&big.Float{}).Parse("1.79769313486231570814527423731704356798070e309", 10)

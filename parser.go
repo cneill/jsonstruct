@@ -93,13 +93,13 @@ func (p *Parser) next() error {
 		return nil
 	}
 
-	t, err := p.decoder.Token()
+	token, err := p.decoder.Token()
 	if err != nil {
 		return fmt.Errorf("failed to get next token: %w", err)
 	}
 
 	p.previous = p.current
-	p.current = t
+	p.current = token
 
 	p.log.Debug("got next token", "current", p.current)
 
@@ -372,6 +372,7 @@ func (p *Parser) parseValue() (any, error) {
 		return p.parseNumber()
 	default:
 		// got null
+		//nolint:nilnil // I literally want to return nil
 		return nil, nil
 	}
 

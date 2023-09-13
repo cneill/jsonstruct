@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:funlen // it's a table-driven test :shrug:
 func TestParser(t *testing.T) {
 	t.Parallel()
 
@@ -89,6 +90,10 @@ func TestParser(t *testing.T) {
 
 			expectedFields := test.expected.Fields()
 			outputFields := structs[0].Fields()
+
+			if len(expectedFields) != len(outputFields) {
+				t.FailNow()
+			}
 
 			for i := 0; i < len(expectedFields); i++ {
 				assert.Equal(t, expectedFields[i], outputFields[i])

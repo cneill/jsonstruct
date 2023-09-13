@@ -44,7 +44,9 @@ func NewFormatter(opts *FormatterOptions) (*Formatter, error) {
 }
 
 func (f *Formatter) FormatStructs(inputs ...*JSONStruct) (string, error) {
-	structStr := "package temp \n"
+	// this is required by gofumpt, it's removed at the end
+	preamble := "package temp\n"
+	structStr := preamble
 
 	for i, input := range inputs {
 		formatted, err := f.formatStructNesting(0, input)
@@ -54,7 +56,7 @@ func (f *Formatter) FormatStructs(inputs ...*JSONStruct) (string, error) {
 
 		structStr += formatted
 
-		// we already inlined all the structs, so no need to print them out at the end
+		// we already inlined all the struct fields, so no need to print out their type declarations at the end
 		if f.InlineStructs {
 			continue
 		}
@@ -77,14 +79,18 @@ func (f *Formatter) FormatStructs(inputs ...*JSONStruct) (string, error) {
 		return "", fmt.Errorf("failed to run gofumpt on generated structs: %w", err)
 	}
 
-	structStr = strings.ReplaceAll(string(formatted), "package temp\n", "")
+	structStr = strings.ReplaceAll(string(formatted), preamble, "")
 
 	return structStr, nil
 }
 
+// formatStructNetsting exists to allow us to track nesting without asking for it in FormatStructs, and so we can
+// gofumpt only on the entire result, not all its pieces
 func (f *Formatter) formatStructNesting(nest int, input *JSONStruct) (string, error) {
 	structStr := ""
 
+	// here, we don't want a "type" and we don't know if this is a struct or []struct, so just leave that to formatField
+	// to prepend
 	if f.InlineStructs && nest > 0 {
 		structStr += " {\n"
 	} else {
@@ -92,34 +98,49 @@ func (f *Formatter) formatStructNesting(nest int, input *JSONStruct) (string, er
 	}
 
 	for _, field := range input.Fields() {
-		if f.InlineStructs && (field.IsStruct() || field.IsStructSlice()) {
-			inlineStruct, err := f.formatStructNesting(nest+1, field.GetStruct())
-			if err != nil {
-				return "", fmt.Errorf("failed to get nested struct: %w", err)
-			}
-
-			sType := "struct"
-			if field.IsStructSlice() {
-				sType = "[]struct"
-			}
-
-			structStr += fmt.Sprintf("%s %s %s %s", field.Name(), sType, inlineStruct, field.Tag())
-		} else {
-			structStr += fmt.Sprintf("%s %s %s", field.Name(), field.Type(), field.Tag())
+		fieldStr, err := f.formatField(nest, field)
+		if err != nil {
+			return "", err
 		}
 
-		if f.ValueComments {
-			structStr += fmt.Sprintf(" %s", field.Comment())
-		}
-
-		structStr += "\n"
+		structStr += fieldStr
 	}
 
 	structStr += "}"
 
+	// we're printing out the "main" / non-inlined struct(s), give 'em some white space
 	if !f.InlineStructs || nest == 0 {
 		structStr += "\n\n"
 	}
 
 	return structStr, nil
+}
+
+// formatField handles formatting inline structs, []structs, and regular fields.
+func (f *Formatter) formatField(nest int, field *Field) (string, error) {
+	fieldStr := ""
+
+	if f.InlineStructs && (field.IsStruct() || field.IsStructSlice()) {
+		inlineStruct, err := f.formatStructNesting(nest+1, field.GetStruct())
+		if err != nil {
+			return "", fmt.Errorf("failed to get nested struct: %w", err)
+		}
+
+		sType := "struct"
+		if field.IsStructSlice() {
+			sType = "[]struct"
+		}
+
+		fieldStr += fmt.Sprintf("%s %s %s %s", field.Name(), sType, inlineStruct, field.Tag())
+	} else {
+		fieldStr += fmt.Sprintf("%s %s %s", field.Name(), field.Type(), field.Tag())
+	}
+
+	if f.ValueComments {
+		fieldStr += fmt.Sprintf(" %s", field.Comment())
+	}
+
+	fieldStr += "\n"
+
+	return fieldStr, nil
 }

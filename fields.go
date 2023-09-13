@@ -120,7 +120,6 @@ func getSliceType(input any) string {
 	)
 
 	// walk the array's elements and figure out if they're all typed the same
-	// TODO: handle more than 2 levels of nesting...
 	for i := 0; i < rawVal.Len(); i++ {
 		var itemType string
 

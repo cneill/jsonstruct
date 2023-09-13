@@ -42,7 +42,13 @@ func TestFieldType(t *testing.T) {
 		{"any_string_slice", []any{"1", "2", "3"}, "[]string"},
 		{"null_slice", []any{nil, nil}, "[]*json.RawMessage"},
 		{"structs", []any{jsonstruct.New()}, "[]*Structs"},
-		// {"nested_slices", []any{[]any{1, 2, 3}, []any{4, 5, 6}}, "[][]int64"}, // TODO: make this pass
+		{"nested_int64_slices", []any{[]int64{1, 2, 3}, []int64{4, 5, 6}}, "[][]int64"},
+		{"nested_float64_slices", []any{[]float64{1, 2, 3}, []float64{4, 5, 6}}, "[][]float64"},
+		{
+			name:   "deeply_nested_int64_slices",
+			input:  []any{[]any{[]any{[]any{[]int64{1, 2, 3}}}}},
+			output: "[][][][][]int64",
+		},
 	}
 
 	for _, test := range tests {

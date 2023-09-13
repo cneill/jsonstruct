@@ -1,8 +1,8 @@
 ---
-name: test
+name: Test and lint
 on: [push]
 jobs:
-  build-and-test:
+  test-and-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
@@ -24,3 +24,8 @@ jobs:
 
       - name: FuzzGetGoName
         run: go test -v -fuzztime 60s -fuzz "FuzzGetGoName"
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest

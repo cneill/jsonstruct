@@ -33,6 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 // CommonInitialisms contains the words that are recognized by "go lint" as initials needing capitalization.
+//
+//nolint:gochecknoglobals
 var CommonInitialisms = map[string]bool{
 	"ACL":   true,
 	"API":   true,

@@ -2,151 +2,370 @@ package jsonstruct
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 	"strings"
 )
 
-// Field describes a struct field in a JSONStruct.
+const jsonRawMessage = "*json.RawMessage"
+
+// Field represents a single struct field.
 type Field struct {
-	RawName    string
-	RawValue   any
-	Name       string
-	Value      reflect.Value
-	Kind       reflect.Kind
-	SliceKind  reflect.Kind
-	StructType string
-	Child      *JSONStruct
-	RawMessage bool
-	OmitEmpty  bool
-	// TODO: support multiple comments on a new line above the field definition
-	// Comments   []string
-	Comment string
+	goName       string
+	originalName string
+	rawValue     any
+	optional     bool
+	isJSONRaw    bool
 }
 
-func (f Field) TypeString() string {
-	kind := f.Kind.String()
+func NewField() *Field {
+	return &Field{}
+}
 
-	switch {
-	case f.RawMessage || f.Kind == reflect.Invalid:
-		kind = "*json.RawMessage"
-	case f.Kind == reflect.Float64:
-		if f.RawValue == nil {
-			kind = "float64"
-		} else if CanBeInt64(f.RawValue.(float64)) {
-			kind = "int64"
+func (f *Field) SetName(originalName string) *Field {
+	f.goName = GetGoName(originalName)
+	f.originalName = originalName
+
+	return f
+}
+
+func (f *Field) SetValue(value any) *Field {
+	f.rawValue = value
+
+	return f
+}
+
+func (f *Field) SetOptional() *Field {
+	f.optional = true
+
+	return f
+}
+
+func (f *Field) SetJSONRaw() *Field {
+	f.isJSONRaw = true
+
+	return f
+}
+
+// Name returns the name of this field as it will be rendered in the final struct.
+func (f Field) Name() string {
+	return f.goName
+}
+
+func (f Field) OriginalName() string {
+	return f.originalName
+}
+
+// Tag returns the JSON tag as it will be rendered in the final struct.
+func (f Field) Tag() string {
+	if f.originalName == f.Name() {
+		return ""
+	}
+
+	if f.optional {
+		return fmt.Sprintf("`json:\"%s,omitempty\"`", f.originalName)
+	}
+
+	return fmt.Sprintf("`json:\"%s\"`", f.originalName)
+}
+
+// Type returns the type of the field as it will be rendered in the final struct.
+func (f Field) Type() string {
+	if f.rawValue == nil || f.isJSONRaw {
+		return jsonRawMessage
+	}
+
+	switch f.rawValue.(type) {
+	case int64:
+		return "int64"
+	case *big.Int:
+		return "*big.Int"
+	case float64:
+		return "float64"
+	case *big.Float:
+		return "*big.Float"
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	}
+
+	if f.IsSlice() {
+		return f.SliceType()
+	}
+
+	if f.IsStruct() {
+		return fmt.Sprintf("*%s", f.goName)
+	}
+
+	return "any"
+}
+
+// SliceType returns the type of the slice this field represents.
+func (f Field) SliceType() string {
+	// rawVal := reflect.ValueOf(f.rawValue)
+	rawType := reflect.TypeOf(f.rawValue)
+
+	if rawType.Kind() != reflect.Slice {
+		return ""
+	}
+
+	// we have a field that represents a struct, whose slice type is its name
+	if f.IsStructSlice() {
+		return fmt.Sprintf("[]*%s", f.Name())
+	}
+
+	return getSliceType(f.rawValue)
+}
+
+func getSliceType(input any) string {
+	var (
+		rawVal = reflect.ValueOf(input)
+		// rawType   = reflect.TypeOf(input)
+		sliceType string
+	)
+
+	// walk the array's elements and figure out if they're all typed the same
+	for i := 0; i < rawVal.Len(); i++ {
+		var itemType string
+
+		idxVal := rawVal.Index(i)
+		kind := idxVal.Type().Kind()
+
+		if kind == reflect.Pointer || kind == reflect.Interface {
+			idxVal = idxVal.Elem()
 		}
-	case f.Kind == reflect.Map:
-		if f.StructType == "" {
-			kind = "map[string]any"
+
+		if !idxVal.IsValid() {
+			sliceType = jsonRawMessage
+
+			break
+		}
+
+		idxType := idxVal.Type()
+		kind = idxType.Kind()
+
+		if kind == reflect.Slice {
+			itemType = getSliceType(idxVal.Interface())
 		} else {
-			kind = fmt.Sprintf("*%s", f.StructType)
+			itemType = idxType.String()
 		}
-	case f.Kind == reflect.Slice:
-		switch f.SliceKind {
-		case reflect.Invalid:
-			kind = "[]*json.RawMessage"
-		case reflect.Struct:
-			if f.StructType == "" {
-				kind = "[]struct{}"
-			} else {
-				kind = fmt.Sprintf("[]*%s", f.StructType)
+
+		// we have encountered multiple types for this field, have to accept anything
+		if sliceType != "" && itemType != sliceType {
+			sliceType = jsonRawMessage
+
+			break
+		}
+
+		sliceType = itemType
+	}
+
+	return fmt.Sprintf("[]%s", sliceType)
+}
+
+// Value returns the string version of RawValue.
+func (f Field) Value() string {
+	if val := simpleAnyToString(f.rawValue); val != "" {
+		return val
+	}
+
+	if f.rawValue == nil {
+		return "null"
+	}
+
+	if vals := f.SimpleSliceValues(); f.IsSlice() && len(vals) > 0 {
+		return fmt.Sprintf("[%s]", strings.Join(vals, ", "))
+	}
+
+	return ""
+}
+
+// SimpleSliceValues returns a slice of strings with the values of simple slice Fields ([]int64, []float64, []bool,
+// []string). If it doesn't recognize the Field as one of these, it returns an empty slice.
+func (f Field) SimpleSliceValues() []string {
+	results := []string{}
+
+	if !f.IsSlice() {
+		return []string{}
+	}
+
+	rawVal := reflect.ValueOf(f.rawValue)
+
+	switch f.SliceType() {
+	case "[]int64", "[]float64", "[]bool", "[]string":
+		for i := 0; i < rawVal.Len(); i++ {
+			idxVal := rawVal.Index(i)
+			kind := idxVal.Type().Kind()
+
+			if kind == reflect.Pointer || kind == reflect.Interface {
+				idxVal = idxVal.Elem()
 			}
-		default:
-			kind = fmt.Sprintf("[]%s", f.SliceKind.String())
+
+			if !idxVal.IsValid() {
+				return []string{}
+			}
+
+			results = append(results, simpleAnyToString(idxVal.Interface()))
 		}
 	}
 
-	return kind
+	return results
 }
 
-// Tag returns the tag to include with a struct field.
-func (f Field) TagString() string {
-	var result string
+// Comment returns the string used for example value comments.
+func (f Field) Comment() string {
+	comment := ""
+	cleanVal := strings.ReplaceAll(f.Value(), "\n", "\\n")
 
-	if f.OmitEmpty {
-		result = fmt.Sprintf("`json:\"%s,omitempty\"`", f.RawName)
-	} else {
-		result = fmt.Sprintf("`json:\"%s\"`", f.RawName)
+	if val := f.Value(); val != "" {
+		comment = fmt.Sprintf("// Example: %s", cleanVal)
+	}
+
+	if len(comment) > 50 {
+		comment = fmt.Sprintf("%s...", comment[0:47])
+	}
+
+	return comment
+}
+
+// IsStruct returns true if RawValue is either a struct or a pointer to a struct.
+func (f Field) IsStruct() bool {
+	if f.rawValue == nil {
+		return false
+	}
+
+	typ := reflect.TypeOf(f.rawValue)
+	kind := typ.Kind()
+
+	if kind == reflect.Ptr {
+		kind = typ.Elem().Kind()
+	}
+
+	return kind == reflect.Struct
+}
+
+// GetStruct gets a the JSONStruct in RawValue if f is a struct or slice of struct, otherwise returns nil.
+func (f Field) GetStruct() *JSONStruct {
+	switch {
+	case f.IsStruct():
+		js, ok := f.rawValue.(*JSONStruct)
+		if !ok {
+			return nil
+		}
+
+		return js.SetName(f.Name())
+	case f.IsStructSlice():
+		return f.GetSliceStruct()
+	default:
+		return nil
+	}
+}
+
+func (f Field) GetSliceStruct() *JSONStruct {
+	anySlice, ok := f.rawValue.([]any)
+	if !ok {
+		return nil
+	}
+
+	return getSliceStruct(anySlice).SetName(f.Name())
+}
+
+func getSliceStruct(input []any) *JSONStruct {
+	result := &JSONStruct{}
+
+	jStructs, err := anySliceToJSONStructs(input)
+	if err != nil {
+		return nil
+	}
+
+	// foundFields contains the first instance of a field, while fieldCounts reports the number of structs containing it
+	// have to use synced slices here to avoid the reordering that would occur with a map
+	foundFields := []*Field{}
+	fieldTypes := []string{}
+	fieldCounts := []int{}
+
+	// have a slice of structs, each of which may or may not contain the full set of fields - walk each and find the
+	// fields that don't reoccur
+	for _, jStruct := range jStructs {
+		for _, field := range jStruct.Fields() {
+			foundIndex := -1
+
+			for i, foundField := range foundFields {
+				if field.OriginalName() == foundField.OriginalName() {
+					fieldCounts[i]++
+
+					foundIndex = i
+
+					break
+				}
+			}
+
+			if foundIndex == -1 {
+				foundFields = append(foundFields, field)
+				fieldTypes = append(fieldTypes, field.Type())
+				fieldCounts = append(fieldCounts, 1)
+			} else if field.Type() != fieldTypes[foundIndex] {
+				foundFields[foundIndex].SetJSONRaw()
+			}
+		}
+	}
+
+	for i := 0; i < len(foundFields); i++ {
+		if fieldCounts[i] != len(jStructs) {
+			foundFields[i].SetOptional()
+		}
+
+		result.AddFields(foundFields[i])
 	}
 
 	return result
 }
 
-func (f Field) CommentString() string {
-	if len(f.Comment) > 0 {
-		return fmt.Sprintf("// %s\n", f.Comment)
-	}
+// IsSlice returns true if RawValue is of kind slice.
+func (f Field) IsSlice() bool {
+	kind := reflect.TypeOf(f.rawValue).Kind()
 
-	return "\n"
+	return kind == reflect.Slice
 }
 
-// Equals compares 2 Field objects to see if they are have the same fields.
-// TODO: improve this
-func (f Field) Equals(compare Field) bool {
-	switch {
-	case f.Name != compare.Name:
+func (f Field) IsStructSlice() bool {
+	return isStructSlice(f.rawValue)
+}
+
+func isStructSlice(input any) bool {
+	anySlice, ok := input.([]any)
+	if !ok {
 		return false
-	case f.RawName != compare.RawName:
-		return false
-	case f.Kind != compare.Kind:
-		return false
-	case f.SliceKind != compare.SliceKind:
-		return false
-	case f.StructType != compare.StructType:
+	}
+
+	if _, err := anySliceToJSONStructs(anySlice); err != nil {
 		return false
 	}
 
 	return true
 }
 
-// GetExampleString returns the "// Ex: [whatever]" text when value comments are enabled.
-func (f Field) ExampleString() string {
-	return getExampleString(f.RawValue)
+// Equals returns true if two Fields share an original name, Go name, and type - does not compare values!
+func (f Field) Equals(input *Field) bool {
+	switch {
+	case f.Name() != input.Name():
+		return false
+	case f.Type() != input.Type():
+		return false
+	case f.OriginalName() != input.OriginalName():
+		return false
+	}
+
+	return true
 }
 
-type Fields []Field
+// Fields is a convenience type for a slice of Field structs.
+type Fields []*Field
 
-func (f Fields) Sort() {
+func (f Fields) SortAlphabetically() {
 	sort.Slice(f, func(i, j int) bool {
-		return strings.ToLower(f[i].Name) < strings.ToLower(f[j].Name)
+		return f[i].goName < f[j].goName
 	})
-}
-
-// String properly formats the Fields with spacing/etc as gofmt would.
-func (f Fields) String() string {
-	var (
-		result      string
-		longestType string
-		longestName string
-		longestTag  string
-	)
-
-	for _, field := range f {
-		if len(field.Name) > len(longestName) {
-			longestName = field.Name
-		}
-
-		if ts := field.TypeString(); len(ts) > len(longestType) {
-			longestType = ts
-		}
-
-		if tag := field.TagString(); len(tag) > len(longestTag) {
-			longestTag = tag
-		}
-	}
-
-	fmtString := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%s", len(longestName)+1, len(longestType)+1, len(longestTag)+1)
-
-	for _, field := range f {
-		content := strings.TrimSpace(fmt.Sprintf(fmtString,
-			field.Name,
-			field.TypeString(),
-			field.TagString(),
-			field.CommentString(),
-		))
-		result += fmt.Sprintf("\t%s\n", content)
-	}
-
-	return result
 }

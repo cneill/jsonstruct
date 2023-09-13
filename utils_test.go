@@ -1,7 +1,7 @@
 package jsonstruct_test
 
 import (
-	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,24 +9,26 @@ import (
 	"github.com/cneill/jsonstruct"
 )
 
-func TestGetNormalizedName(t *testing.T) {
+func TestGetGoName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		input  string
-		output string
+		name     string
+		input    string
+		expected string
 	}{
 		{"separators1", "this_is-a.test_name", "ThisIsATestName"},
 		{"separators2", "remote_-.URL", "RemoteURL"},
 		{"weirdcase", "ThiSiSaNumber2", "ThiSiSaNumber2"},
 		{"separators_with_initialism", "This_Is_An_ID", "ThisIsAnID"},
 		{"underscore_start", "_underscored", "Underscored"},
-		{"garbage_characters", "($@%)@$%)(@", ""},
+		{"garbage_characters", "($@%)@$%)(@", "Unknown"},
 		{"garbage_characters_with_content", "@)(#$)@(#$)@#($garbage@#)$@)#($@)#($", "Garbage"},
 		{"garbage_separator", "@t@e@s@t", "Test"},
 		{"spaces", "       spaces", "Spaces"},
 		{"multiple_spaces", "here are some spaces", "HereAreSomeSpaces"},
+		{"leading_number", "0", "JSON0"},
+		{"dot_special_case", ".", "Dot"},
 	}
 
 	for _, test := range tests {
@@ -34,58 +36,49 @@ func TestGetNormalizedName(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			output := jsonstruct.GetNormalizedName(test.input)
-			assert.Equal(t, output, test.output)
+			assert.Equal(t, test.expected, jsonstruct.GetGoName(test.input))
 		})
 	}
 }
 
-func TestGetSliceKind(t *testing.T) {
-	t.Parallel()
+func FuzzGetGoName(f *testing.F) {
+	validRegex := regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*$`)
 
-	tests := []struct {
-		name   string
-		input  any
-		output reflect.Kind
-	}{
-		{"floats", []float64{1.5, 2.0, 5.0}, reflect.Float64},
-		{"ints", []int{1, 2, 3}, reflect.Int64},
-		{"floats_any", []any{1.0, 2.0, 3.0}, reflect.Float64},
-		{"ints_any", []any{1, 2, 3}, reflect.Int64},
-		{"nested_any", []any{map[string]string{"test": "test"}}, reflect.Struct}, // maps => struct
-		{"empty_ints", []int64{}, reflect.Invalid},                               // empty slices of any kind => Invalid
-		{"empty_any", []any{}, reflect.Invalid},                                  // empty slices of any kind => Invalid
-		{"random1", []any{1, "b", 3.0}, reflect.Invalid},                         // slices with varying kind => Invalid
-		{"random2", []any{"test", struct{}{}, 1.5, nil}, reflect.Invalid},        // slices with varying kind => Invalid
+	seeds := []string{
+		"this_is-a.test_name",
+		"remote_-.URL",
+		"ThiSiSaNumber2",
+		"This_Is_An_ID",
+		"_underscored",
+		"($@%)@$%)(@",
+		"@)(#$)@(#$)@#($garbage@#)$@)#($@)#($",
+		"@t@e@s@t",
+		"       spaces",
+		"here are some spaces",
 	}
 
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-
-			output, err := jsonstruct.GetSliceKind(test.input)
-			assert.Nil(t, err)
-			assert.Equal(t, test.output, output)
-		})
+	for _, seed := range seeds {
+		f.Add(seed)
 	}
 
-	if _, err := jsonstruct.GetSliceKind(struct{}{}); err == nil {
-		t.Errorf("should throw error when non-slice is passed to GetSliceKind")
-	}
+	f.Fuzz(func(t *testing.T, input string) {
+		transformed := jsonstruct.GetGoName(input)
+		assert.True(t, validRegex.MatchString(transformed) || transformed == "")
+	})
 }
 
-func TestNameFromInputFile(t *testing.T) {
+func TestGetFileGoName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		input  string
-		output string
+		name     string
+		input    string
+		expected string
 	}{
-		{"underscores", "test_file.json", "TestFile"},
-		{"uncapitalized_camel", "garbageFile", "GarbageFile"},
-		{"capitalized", "CapitalizedFileName.JSON", "CapitalizedFileName"},
+		{"simple", "file_name.json", "FileName"},
+		{"path", "/path/to/file.json", "File"},
+		{"path_no_extension", "/path/to/file", "File"},
+		// TODO: handle multiple extensions {"json.gz", "file_name.json.gz", "FileName"},
 	}
 
 	for _, test := range tests {
@@ -93,8 +86,7 @@ func TestNameFromInputFile(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			output := jsonstruct.NameFromInputFile(test.input)
-			assert.Equal(t, output, test.output)
+			assert.Equal(t, test.expected, jsonstruct.GetFileGoName(test.input))
 		})
 	}
 }

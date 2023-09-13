@@ -1,0 +1,32 @@
+{
+  "test_bool": true,
+  "test_int64": 1234,
+  "test_float64": 1234.0,
+  "test_string": "test",
+  "test_array_of_bool": [true, false, true],
+  "test_array_of_int64": [1, 2, 3, 4],
+  "test_array_of_float64": [1.0, 2.0, 3.0, 4.0],
+  "test_array_of_string": ["test1", "test2", "test3"],
+  "test_struct": {
+    "test_string": "test",
+    "test_array_of_string": ["test1", "test2", "test3"]
+  },
+  "test_array_of_struct": [
+    {
+      "test_string": "test1",
+      "test_optional_string": "test1"
+    },
+    {
+      "test_string": "test2",
+      "test_optional_string": "test2"
+    },
+    {
+      "test_string": "test3"
+    },
+    {
+      "test_string": "test4"
+    }
+  ],
+  "test_garbage_array": [1, "1", 1.0],
+  "terrible-name.for_a.key": "test"
+}

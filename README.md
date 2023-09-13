@@ -77,6 +77,11 @@ GLOBAL OPTIONS:
             "differentStuff": "differentStuff"
         }
     ],
+    "nested_numbers": [
+        [1, 2, 3],
+        [2, 3, 4],
+        [3, 4, 5]
+    ],
     "nothing": null
 }
 ```
@@ -85,15 +90,16 @@ GLOBAL OPTIONS:
 
 ```golang
 type Stdin1 struct {
-        Currency     string   `json:"currency"`
-        Amount       float64  `json:"amount"`
-        Map          *Map     `json:"map"`
-        Array        []int64  `json:"array"`
-        StringArray  []string `json:"string_array"`
-        CamelKey     string
-        BlahBlahBlah string           `json:"blahBlahBlah"`
-        Structs      []*Structs       `json:"structs"`
-        Nothing      *json.RawMessage `json:"nothing"`
+        Currency      string   `json:"currency"`
+        Amount        float64  `json:"amount"`
+        Map           *Map     `json:"map"`
+        Array         []int64  `json:"array"`
+        StringArray   []string `json:"string_array"`
+        CamelKey      string
+        BlahBlahBlah  string           `json:"blahBlahBlah"`
+        Structs       []*Structs       `json:"structs"`
+        NestedNumbers [][]int64        `json:"nested_numbers"`
+        Nothing       *json.RawMessage `json:"nothing"`
 }
 
 type Map struct {

@@ -1,6 +1,7 @@
 ---
 builds:
   - id: main
+    main: cmd/jsonstruct
     goos:
       - darwin
       - linux

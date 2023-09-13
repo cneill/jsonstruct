@@ -46,6 +46,10 @@ func (f Field) Name() string {
 	return f.goName
 }
 
+func (f Field) OriginalName() string {
+	return f.originalName
+}
+
 // Tag returns the JSON tag as it will be rendered in the final struct.
 func (f Field) Tag() string {
 	if f.originalName == f.Name() {
@@ -241,19 +245,21 @@ func (f Field) GetSliceStruct() *JSONStruct {
 		return nil
 	}
 
-	jss, err := anySliceToJSONStructs(anySlice)
+	jStructs, err := anySliceToJSONStructs(anySlice)
 	if err != nil {
 		return nil
 	}
 
+	// foundFields contains the first instance of a field, while fieldCounts reports the number of structs containing it
 	// have to use synced slices here to avoid the reordering that would occur with a map
 	foundFields := []*Field{}
 	fieldCounts := []int{}
 
-	// we have a slice of structs, each of which may or may not contain the full set of fields
-	// TODO: use this logic to handle JSON inputs of type []object
-	for _, js := range jss {
-		for _, field := range js.fields {
+	// have a slice of structs, each of which may or may not contain the full set of fields - walk each and find the
+	// fields that don't reoccur
+	// TODO: use this logic to handle JSON inputs of type []object - 9/12/23: wtf does this mean
+	for _, jStruct := range jStructs {
+		for _, field := range jStruct.fields {
 			alreadySeen := false
 
 			for i, foundField := range foundFields {
@@ -261,6 +267,8 @@ func (f Field) GetSliceStruct() *JSONStruct {
 					fieldCounts[i]++
 
 					alreadySeen = true
+
+					break
 				}
 			}
 
@@ -272,7 +280,7 @@ func (f Field) GetSliceStruct() *JSONStruct {
 	}
 
 	for i := 0; i < len(foundFields); i++ {
-		if fieldCounts[i] != len(jss) {
+		if fieldCounts[i] != len(jStructs) {
 			foundFields[i].SetOptional()
 		}
 
@@ -302,14 +310,14 @@ func (f Field) IsStructSlice() bool {
 	return true
 }
 
-// Equals returns true if two Fields share a name/type/tag - does not compare values!
+// Equals returns true if two Fields share an original name, Go name, and type - does not compare values!
 func (f Field) Equals(input *Field) bool {
 	switch {
 	case f.Name() != input.Name():
 		return false
 	case f.Type() != input.Type():
 		return false
-	case f.Tag() != input.Tag():
+	case f.OriginalName() != input.OriginalName():
 		return false
 	}
 

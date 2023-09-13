@@ -4,8 +4,9 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/cneill/jsonstruct.svg)](https://pkg.go.dev/github.com/cneill/jsonstruct)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cneill/jsonstruct)](https://goreportcard.com/report/github.com/cneill/jsonstruct)
 
-`jsonstruct` is both a library and a command line tool to produce Go structs based on example JSON text. It's in the middle of
-a refactor, so you probably don't want to rely on it too heavily right now.
+`jsonstruct` is both a library and a command line tool to produce Go structs based on example JSON text. I just
+refactored this pretty heavily, so there may still be bugs. It uses [`gofumpt`](https://github.com/mvdan/gofumpt) to
+format its output.
 
 ## Installation
 

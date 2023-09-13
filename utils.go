@@ -5,6 +5,9 @@ import (
 	"math/big"
 	"path"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // GetGoName takes in a field name or file name and returns a "normalized" (CamelCase) string suitable for use as a Go
@@ -38,15 +41,18 @@ func GetGoName(input string) string {
 		temp = append(temp, word)
 	}
 
-	// TODO: replace this with golang.org/x/text/cases.Title()
-	result := strings.Title(strings.Join(temp, " "))
+	// transform to something like camel-case, leaving capitalizations already present intact
+	caser := cases.Title(language.AmericanEnglish, cases.NoLower)
+	result := caser.String(strings.Join(temp, " "))
 	result = strings.ReplaceAll(result, " ", "")
 
+	// variable names can't start with a number
 	if len(result) > 0 && isNumber(rune(result[0])) {
 		result = "JSON" + result
 	}
 
-	if len(result) == 0 {
+	// unnamed struct fields / struct fields of only spaces break things
+	if len(strings.TrimSpace(result)) == 0 {
 		return "Unknown"
 	}
 

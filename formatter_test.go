@@ -15,7 +15,7 @@ import (
 )
 
 func TestFormatString(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	tests := []struct {
 		name     string
@@ -55,7 +55,7 @@ func TestFormatStringFiles(t *testing.T) {
 	for _, testFilePath := range testFilePaths {
 		testFilePath := testFilePath
 		t.Run(testFilePath, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			testFileDir, testFileName := path.Split(testFilePath)
 			expectedFileName := fmt.Sprintf("%s_result.txt", strings.TrimSuffix(testFileName, path.Ext(testFileName)))
 			expectedFilePath := path.Join(testFileDir, expectedFileName)
@@ -75,6 +75,10 @@ func TestFormatStringFiles(t *testing.T) {
 			formatterOpts := &jsonstruct.FormatterOptions{}
 			if strings.Contains(testFileName, "comment") {
 				formatterOpts.ValueComments = true
+			}
+
+			if strings.Contains(testFileName, "inline") {
+				formatterOpts.InlineStructs = true
 			}
 
 			formatter, err := jsonstruct.NewFormatter(formatterOpts)

@@ -13,9 +13,9 @@ func TestGetGoName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		input  string
-		output string
+		name     string
+		input    string
+		expected string
 	}{
 		{"separators1", "this_is-a.test_name", "ThisIsATestName"},
 		{"separators2", "remote_-.URL", "RemoteURL"},
@@ -36,7 +36,7 @@ func TestGetGoName(t *testing.T) {
 			t.Parallel()
 
 			output := jsonstruct.GetGoName(test.input)
-			assert.Equal(t, output, test.output)
+			assert.Equal(t, test.expected, output)
 		})
 	}
 }

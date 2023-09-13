@@ -109,9 +109,7 @@ func (f Field) SliceType() string {
 		return fmt.Sprintf("[]*%s", f.Name())
 	}
 
-	sliceType := getSliceType(f.rawValue)
-
-	return fmt.Sprintf("[]%s", sliceType)
+	return getSliceType(f.rawValue)
 }
 
 func getSliceType(input any) string {
@@ -145,7 +143,7 @@ func getSliceType(input any) string {
 		if kind == reflect.Slice {
 			itemType = getSliceType(idxVal.Interface())
 		} else {
-			itemType = fmt.Sprintf("[]%s", idxType.String())
+			itemType = idxType.String()
 		}
 
 		// we have encountered multiple types for this field, have to accept anything
@@ -158,7 +156,7 @@ func getSliceType(input any) string {
 		sliceType = itemType
 	}
 
-	return sliceType
+	return fmt.Sprintf("[]%s", sliceType)
 }
 
 // Value returns the string version of RawValue.

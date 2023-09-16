@@ -1,0 +1,51 @@
+.body {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+.input, .output {
+    width: 100%;
+    min-height: 100px;
+    max-height: 500px;
+    background-color: #000000;
+    color: #ffffff;
+    font-size: 1.5em;
+    font-family: Lucida Console, monospace;
+    border-color: #333333;
+}
+
+.button {
+    font-size: 20pt;
+    width: 100%;
+    border-width: 3px;
+    border-style: solid;
+    border-radius: 3px;
+    font-weight: bold;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.button--green {
+    background-color: #33aa44;
+    border-color: #1e5926;
+    color: #ffffff;
+}
+
+.button--blue {
+    background-color: #1122ff;
+    border-color: #0d157e;
+    color: #ffffff;
+}
+
+.output.htmx-added {
+  opacity: 0;
+}
+
+.output {
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}

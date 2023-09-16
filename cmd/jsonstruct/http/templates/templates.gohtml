@@ -1,0 +1,33 @@
+{{- define "index" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Roam Quote Prettifier</title>
+    <link rel="stylesheet" href="/static/index.css" type="text/css"></link>
+
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/index.js"></script>
+</head>
+<body class="body">
+    <form hx-indicator="#indicator">
+        <textarea class="input" id="input" name="input" placeholder="Enter your JSON"
+            hx-post="/generate"
+            hx-swap="outerHTML settle:400ms"
+            hx-target="#output"
+            hx-trigger="keyup changed dely:500ms"></textarea>
+        <br />
+    </form>
+    <br />
+    <textarea class="output" id="output"></textarea>
+    <button id="copy" class="button button--green">
+        Copy to clipboard
+    </button>
+    <img id="indicator" src="/static/loading.webp" class="htmx-indicator">
+</body>
+</html>
+{{- end }}
+
+{{- define "generate" }}
+<textarea id="output" class="output" readonly>{{ .Generated }}</textarea>
+{{- end }}

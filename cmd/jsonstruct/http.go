@@ -79,8 +79,8 @@ func GenerateHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	formatter, err := jsonstruct.NewFormatter(&jsonstruct.FormatterOptions{
-		// SortFields:    ctx.Bool("sort-fields"),
-		// ValueComments: ctx.Bool("value-comments"),
+		SortFields:    req.PostForm.Get("sort_fields") == "on",
+		ValueComments: req.PostForm.Get("value_comments") == "on",
 		// InlineStructs: ctx.Bool("inline-structs"),
 	})
 	if err != nil {

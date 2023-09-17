@@ -5,9 +5,9 @@
     margin: 0;
 }
 
-.form {
-    margin: 0;
-    padding: 0;
+.form, .output-pre {
+    margin: 0 !important;
+    padding: 0 !important;
     width: 100%;
     height: 100%;
 }
@@ -25,11 +25,15 @@
 .input-container {
     grid-row: 1/2;
     grid-column: 1/2;
+    margin: 0;
+    padding: 0;
 }
 
 .output-container {
     grid-row: 1/2;
     grid-column: 2/3;
+    margin: 0;
+    padding: 0;
 }
 
 .options-container {
@@ -39,18 +43,27 @@
 }
 
 .input, .output {
+    margin: 0;
+    padding: 0;
     height: 100%;
     width: 100%;
     background-color: #000000;
     color: #ffffff;
-    /*font-size: 1.5em;*/
     font-family: Lucida Console, monospace;
     border-color: #333333;
 }
 
+.fieldset {
+    border-radius:  5px;
+}
+
+.fieldset-legend {
+    color: #000000;
+    background-color: #ffffff;
+    border-radius: 5px;
+}
+
 .button {
-    font-size: 20pt;
-    /*width: 100%;*/
     border-width: 3px;
     border-style: solid;
     border-radius: 3px;

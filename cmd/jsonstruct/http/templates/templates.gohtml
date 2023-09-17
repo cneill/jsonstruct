@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Roam Quote Prettifier</title>
+    <link rel="stylesheet" href="/static/prism.css" type="text/css"></link>
     <link rel="stylesheet" href="/static/index.css" type="text/css"></link>
 </head>
 <body class="body">
@@ -18,19 +19,21 @@
             </div>
             <div class="output-container" id="output-container">
                 <img class="htmx-indicator" id="indicator" src="/static/loading.webp" />
-                <textarea class="output" id="output" readonly></textarea>
+                <pre class="output-pre language-go"><code id="output" class="output language-go"></code></pre>
             </div>
             <div class="options-container"
                 hx-post="/generate"
                 hx-swap="innerHTML"
                 hx-target="#output-container"
                 hx-trigger="change">
-                <fieldset name="options">
-                    <legend>Options</legend>
+                <fieldset name="options" class="fieldset">
+                    <legend class="fieldset-legend">Options</legend>
                     <label for="value_comments">Include value comments</label>
                     <input type="checkbox" name="value_comments">
+                    <br />
                     <label for="sort_fields">Sort fields</label>
                     <input type="checkbox" name="sort_fields">
+                    <br />
                     <label for="inline_structs">Inline structs</label>
                     <input type="checkbox" name="inline_structs">
                 </fieldset>
@@ -43,6 +46,7 @@
     </form>
 
     <script src="/static/htmx.min.js"></script>
+    <script src="/static/prism.js"></script>
     <script src="/static/index.js"></script>
 </body>
 </html>
@@ -50,5 +54,5 @@
 
 {{- define "generate" }}
 <img class="htmx-indicator" id="indicator" src="/static/loading.webp" />
-<textarea id="output" class="output" readonly>{{ .Generated }}</textarea>
+<pre class="output-pre language-go"><code id="output" class="output language-go">{{ .Generated }}</code></pre>
 {{- end }}

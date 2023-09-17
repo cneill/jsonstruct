@@ -1,8 +1,9 @@
 function clipboardCopy() {
-    var output = document.querySelector("#output");
-    output.select();
-    output.setSelectionRange(0, 9999999);
-    navigator.clipboard.writeText(output.value);
+    let outputElem = document.querySelector("#output");
+
+    if (outputElem) {
+        navigator.clipboard.writeText(outputElem.innerText);
+    }
 }
 
 
@@ -14,6 +15,21 @@ window.onload = function() {
     });
 }
 
+document.body.addEventListener("htmx:beforeRequest", e => {
+    let inputElem = e.detail.elt.querySelector(".input");
+    if (!inputElem) {
+        return;
+    }
+
+    try {
+        JSON.parse(inputElem.value);
+    } catch (err) {
+        if (inputElem.value != "") {
+            e.preventDefault();
+        }
+    }
+});
+
 document.body.addEventListener("htmx:beforeSwap", e => {
     if (e.detail.xhr.status >= 400) {
         e.detail.shouldSwap = false;
@@ -21,15 +37,10 @@ document.body.addEventListener("htmx:beforeSwap", e => {
     }
 });
 
-document.body.addEventListener("htmx:beforeRequest", e => {
-    let inputElem = e.detail.elt.querySelector(".input");
-    let inputText = inputElem.value;
+document.body.addEventListener("htmx:afterSwap", e => {
+    let codeElem = e.detail.elt.querySelector(".output");
 
-    try {
-        JSON.parse(inputText);
-    } catch (err) {
-        if (inputText != "") {
-            e.preventDefault();
-        }
+    if (codeElem) {
+        Prism.highlightElement(codeElem);
     }
 });

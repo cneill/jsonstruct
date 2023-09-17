@@ -81,7 +81,7 @@ func GenerateHandler(w http.ResponseWriter, req *http.Request) {
 	formatter, err := jsonstruct.NewFormatter(&jsonstruct.FormatterOptions{
 		SortFields:    req.PostForm.Get("sort_fields") == "on",
 		ValueComments: req.PostForm.Get("value_comments") == "on",
-		// InlineStructs: ctx.Bool("inline-structs"),
+		InlineStructs: req.PostForm.Get("inline_structs") == "on",
 	})
 	if err != nil {
 		doErr(w, fmt.Errorf("failed to set up formatter: %w", err))

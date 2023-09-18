@@ -34,6 +34,7 @@ func httpListener(ctx *cli.Context) error {
 
 	fmt.Printf("Listening on %s...\n", listen)
 
+	//nolint:gosec  // I don't think timeouts matter that much for this use case
 	if err := http.ListenAndServe(listen, mux); err != nil {
 		return fmt.Errorf("listening error: %w", err)
 	}

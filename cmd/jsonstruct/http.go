@@ -42,17 +42,15 @@ func httpListener(ctx *cli.Context) error {
 }
 
 // GenerateHandler serves the generated content.
-func GenerateHandler(w http.ResponseWriter, req *http.Request) {
-	t, err := template.New("generate").ParseFS(templatesContent, "http/templates/*.gohtml")
+func GenerateHandler(writer http.ResponseWriter, req *http.Request) {
+	generateTemplate, err := template.New("generate").ParseFS(templatesContent, "http/templates/*.gohtml")
 	if err != nil {
-		doErr(w, fmt.Errorf("failed to load generate template: %w", err))
-
+		doErr(writer, fmt.Errorf("failed to load generate template: %w", err))
 		return
 	}
 
 	if err := req.ParseForm(); err != nil {
-		doErr(w, fmt.Errorf("failed to parse form: %w", err))
-
+		doErr(writer, fmt.Errorf("failed to parse form: %w", err))
 		return
 	}
 
@@ -67,7 +65,7 @@ func GenerateHandler(w http.ResponseWriter, req *http.Request) {
 
 	jStructs, err := parser.Start()
 	if err != nil {
-		doErr(w, fmt.Errorf("failed to parse input: %w", err))
+		doErr(writer, fmt.Errorf("failed to parse input: %w", err))
 		return
 	}
 
@@ -84,13 +82,13 @@ func GenerateHandler(w http.ResponseWriter, req *http.Request) {
 		InlineStructs: req.PostForm.Get("inline_structs") == "on",
 	})
 	if err != nil {
-		doErr(w, fmt.Errorf("failed to set up formatter: %w", err))
+		doErr(writer, fmt.Errorf("failed to set up formatter: %w", err))
 		return
 	}
 
 	result, err := formatter.FormatStructs(jStructs...)
 	if err != nil {
-		doErr(w, fmt.Errorf("failed to format structs: %w", err))
+		doErr(writer, fmt.Errorf("failed to format structs: %w", err))
 		return
 	}
 
@@ -100,31 +98,31 @@ func GenerateHandler(w http.ResponseWriter, req *http.Request) {
 		Generated string
 	}{result}
 
-	if err := t.Execute(w, data); err != nil {
-		doErr(w, fmt.Errorf("failed to execute generate template: %w", err))
+	if err := generateTemplate.Execute(writer, data); err != nil {
+		doErr(writer, fmt.Errorf("failed to execute generate template: %w", err))
 		return
 	}
 }
 
 // IndexHandler serves the main page.
-func IndexHandler(w http.ResponseWriter, _ *http.Request) {
-	t, err := template.New("index").ParseFS(templatesContent, "http/templates/*.gohtml")
+func IndexHandler(writer http.ResponseWriter, _ *http.Request) {
+	indexTemplate, err := template.New("index").ParseFS(templatesContent, "http/templates/*.gohtml")
 	if err != nil {
-		doErr(w, fmt.Errorf("failed to load index template: %w", err))
+		doErr(writer, fmt.Errorf("failed to load index template: %w", err))
 		return
 	}
 
-	if err := t.Execute(w, nil); err != nil {
-		doErr(w, fmt.Errorf("failed to execute index template: %w", err))
+	if err := indexTemplate.Execute(writer, nil); err != nil {
+		doErr(writer, fmt.Errorf("failed to execute index template: %w", err))
 		return
 	}
 }
 
-func doErr(w http.ResponseWriter, err error) {
+func doErr(writer http.ResponseWriter, err error) {
 	fmt.Printf("ERROR WITH REQUEST: %v\n", err)
-	w.WriteHeader(http.StatusBadRequest)
+	writer.WriteHeader(http.StatusBadRequest)
 
-	if _, err := w.Write([]byte(fmt.Sprintf("%v", err))); err != nil {
+	if _, err := writer.Write([]byte(fmt.Sprintf("%v", err))); err != nil {
 		fmt.Printf("error writing error: %v\n", err)
 	}
 }

@@ -1,0 +1,88 @@
+.body {
+    background-color: #000000;
+    color: #ffffff;
+    padding: 0;
+    margin: 0;
+}
+
+.form, .output-pre {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    height: 100%;
+}
+
+.container {
+    display: grid;
+    grid-template-rows: 80% 20%;
+    grid-template-columns: 50% 50%;
+    height: 100vh;
+    width: 100vw;
+    padding: 0;
+    margin: 0;
+}
+
+.input-container {
+    grid-row: 1/2;
+    grid-column: 1/2;
+    margin: 0;
+    padding: 0;
+}
+
+.output-container {
+    grid-row: 1/2;
+    grid-column: 2/3;
+    margin: 0;
+    padding: 0;
+}
+
+.options-container {
+    padding-top: 10px;
+    grid-row: 2/3;
+    grid-column: 1/3;
+}
+
+.input, .output {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #000000;
+    color: #ffffff;
+    font-family: Lucida Console, monospace;
+    border-color: #333333;
+}
+
+.fieldset {
+    border-radius:  5px;
+}
+
+.fieldset-legend {
+    color: #000000;
+    background-color: #ffffff;
+    border-radius: 5px;
+}
+
+.button {
+    border-width: 3px;
+    border-style: solid;
+    border-radius: 3px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.button--green {
+    background-color: #33aa44;
+    border-color: #1e5926;
+    color: #ffffff;
+}
+
+.button--blue {
+    background-color: #1122ff;
+    border-color: #0d157e;
+    color: #ffffff;
+}
+
+.htmx-indicator {
+    display: none;
+}

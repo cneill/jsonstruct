@@ -12,18 +12,18 @@ import (
 )
 
 //nolint:gochecknoglobals // c'mon, it's the logger
-var log *slog.Logger
+var (
+	logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+	log        = slog.New(logHandler)
+)
 
 func run() error {
-	logHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
-	log = slog.New(logHandler)
-
 	app := &cli.App{
 		Name:        "jsonstruct",
 		Action:      genStructs,
-		ArgsUsage:   "[file]...",
+		ArgsUsage:   "[FILE]...",
 		Usage:       "generate Go structs for JSON values",
-		Description: `You can either pass in files as args or JSON in STDIN. Results are printed to STDOUT.`,
+		Description: "You can either pass in files as args or JSON in STDIN. Results are printed to STDOUT.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "name",
@@ -50,25 +50,36 @@ func run() error {
 				Aliases: []string{"f"},
 				Usage:   "print the filename above the structs defined within",
 			},
+			&cli.StringFlag{
+				Name:    "out-file",
+				Aliases: []string{"o"},
+				Usage:   "write the results to `FILE`",
+			},
 			&cli.BoolFlag{
-				Name:  "debug",
-				Value: false,
-				Usage: "enable debug logs",
+				Name:    "debug",
+				Aliases: []string{"d"},
+				Value:   false,
+				Usage:   "enable debug logs",
 			},
 		},
-		Before: func(ctx *cli.Context) error {
-			// set debug logging
-			if ctx.Bool("debug") {
-				logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
-				log = slog.New(logHandler)
-			}
-
-			return nil
+		Before: setDebug,
+		Commands: []*cli.Command{
+			httpCommand(),
 		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
 		return fmt.Errorf("ERROR: %w", err)
+	}
+
+	return nil
+}
+
+func setDebug(ctx *cli.Context) error {
+	// set debug logging
+	if ctx.Bool("debug") {
+		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+		log = slog.New(logHandler)
 	}
 
 	return nil
@@ -86,6 +97,21 @@ func genStructs(ctx *cli.Context) error {
 		return err
 	}
 
+	if len(inputs) == 0 {
+		cli.ShowAppHelpAndExit(ctx, 1)
+	}
+
+	outFile := os.Stdout
+
+	if outputPath := ctx.String("out-file"); outputPath != "" {
+		outFile, err = os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create out-file %q: %w", outputPath, err)
+		}
+
+		defer outFile.Close()
+	}
+
 	formatter, err := jsonstruct.NewFormatter(&jsonstruct.FormatterOptions{
 		SortFields:    ctx.Bool("sort-fields"),
 		ValueComments: ctx.Bool("value-comments"),
@@ -96,40 +122,51 @@ func genStructs(ctx *cli.Context) error {
 	}
 
 	for _, input := range inputs {
-		defer func() {
-			input.Close()
-
-			log.Debug("closed file", "file", input.Name())
-		}()
-
-		p := jsonstruct.NewParser(input, log)
-
-		results, err := p.Start()
+		jStructs, err := parseInput(input)
 		if err != nil {
-			return fmt.Errorf("failed to parse input %q: %w", input.Name(), err)
+			return err
 		}
 
-		goFileName := jsonstruct.GetFileGoName(input.Name())
-
-		for i := 0; i < len(results); i++ {
-			structName := fmt.Sprintf("%s%d", goFileName, i+1)
-			results[i].SetName(structName)
-		}
-
+		// print out comments with the name of the file where we saw the struct
 		if ctx.Bool("print-filenames") {
 			spacer := strings.Repeat("=", len(input.Name()))
-			fmt.Printf("// %s\n// %s\n// %s\n", spacer, input.Name(), spacer)
+			fmt.Fprintf(outFile, "// %s\n// %s\n// %s\n", spacer, input.Name(), spacer)
 		}
 
-		result, err := formatter.FormatStructs(results...)
+		result, err := formatter.FormatStructs(jStructs...)
 		if err != nil {
 			return fmt.Errorf("failed to format structs: %w", err)
 		}
 
-		fmt.Printf("%s\n", result)
+		fmt.Fprintf(outFile, "%s\n", result)
 	}
 
 	return nil
+}
+
+func parseInput(input *os.File) (jsonstruct.JSONStructs, error) {
+	defer func() {
+		input.Close()
+
+		log.Debug("closed input file", "file", input.Name())
+	}()
+
+	parser := jsonstruct.NewParser(input, log)
+
+	jStructs, err := parser.Start()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse input %q: %w", input.Name(), err)
+	}
+
+	// set the names of the top-level structs from our example file based on the file's name
+	goFileName := jsonstruct.GetFileGoName(input.Name())
+
+	for i := 0; i < len(jStructs); i++ {
+		structName := fmt.Sprintf("%s%d", goFileName, i+1)
+		jStructs[i].SetName(structName)
+	}
+
+	return jStructs, nil
 }
 
 func getInputs(ctx *cli.Context) ([]*os.File, error) {

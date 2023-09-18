@@ -48,10 +48,14 @@ func (f *Formatter) FormatStructs(inputs ...*JSONStruct) (string, error) {
 	preamble := "package temp\n"
 	structStr := preamble
 
-	for i, input := range inputs {
+	for inputNum, input := range inputs {
+		if f.SortFields {
+			input.fields.SortAlphabetically()
+		}
+
 		formatted, err := f.formatStructNesting(0, input)
 		if err != nil {
-			return "", fmt.Errorf("failed to format struct %d: %w", i, err)
+			return "", fmt.Errorf("failed to format struct %d: %w", inputNum, err)
 		}
 
 		structStr += formatted

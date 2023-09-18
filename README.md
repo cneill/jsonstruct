@@ -21,25 +21,33 @@ NAME:
    jsonstruct - generate Go structs for JSON values
 
 USAGE:
-   jsonstruct [global options] command [command options] [file]...
+   jsonstruct [global options] command [command options] [FILE]...
 
 DESCRIPTION:
    You can either pass in files as args or JSON in STDIN. Results are printed to STDOUT.
 
 COMMANDS:
+   http     run a web app to generate structs in the browser
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --name value, -n value  override the default name derived from filename
-   --value-comments, -c    add a comment to struct fields with the example value(s) (default: false)
-   --sort-fields, -s       sort the fields in alphabetical order; default behavior is to mirror input (default: false)
-   --inline-structs, -i    use inline structs instead of creating different types for each object (default: false)
-   --print-filenames, -f   print the filename above the structs defined within (default: false)
-   --debug                 enable debug logs (default: false)
-   --help, -h              show help
+   --name value, -n value    override the default name derived from filename
+   --value-comments, -c      add a comment to struct fields with the example value(s) (default: false)
+   --sort-fields, -s         sort the fields in alphabetical order; default behavior is to mirror input (default: false)
+   --inline-structs, -i      use inline structs instead of creating different types for each object (default: false)
+   --print-filenames, -f     print the filename above the structs defined within (default: false)
+   --out-file FILE, -o FILE  write the results to FILE
+   --debug, -d               enable debug logs (default: false)
+   --help, -h                show help
 ```
 
 ## Examples
+
+### Webapp
+
+![http-screenshot](./img/http-screenshot.png)
+
+The `http` command allows you to run a webapp to generate these structs in the browser.
 
 ### JSON object
 

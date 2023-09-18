@@ -1,0 +1,58 @@
+{{- define "index" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>jsonstruct</title>
+    <link rel="stylesheet" href="/static/prism.css" type="text/css"></link>
+    <link rel="stylesheet" href="/static/index.css" type="text/css"></link>
+</head>
+<body class="body">
+    <form class="form" hx-post="/generate"
+        hx-swap="innerHTML"
+        hx-target="#output-container"
+        hx-trigger="keyup changed delay:50ms from:.input"
+        focus-scroll:true>
+        <div class="container">
+            <div class="input-container">
+                <textarea class="input" id="input" name="input" placeholder="Enter your JSON"></textarea>
+            </div>
+            <div class="output-container" id="output-container">
+                <img class="htmx-indicator" id="indicator" src="/static/loading.webp" />
+                <pre class="output-pre language-go"><code id="output" class="output language-go"></code></pre>
+            </div>
+            <div class="options-container"
+                hx-post="/generate"
+                hx-swap="innerHTML"
+                hx-target="#output-container"
+                hx-trigger="change">
+                <fieldset name="options" class="fieldset">
+                    <legend class="fieldset-legend">Options</legend>
+                    <label for="value_comments">Include value comments</label>
+                    <input type="checkbox" name="value_comments">
+                    <br />
+                    <label for="sort_fields">Sort fields</label>
+                    <input type="checkbox" name="sort_fields">
+                    <br />
+                    <label for="inline_structs">Inline structs</label>
+                    <input type="checkbox" name="inline_structs">
+                </fieldset>
+                <br />
+                <button type="button" id="copy" class="button button--green">
+                    Copy to clipboard
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/prism.js"></script>
+    <script src="/static/index.js"></script>
+</body>
+</html>
+{{- end }}
+
+{{- define "generate" }}
+<img class="htmx-indicator" id="indicator" src="/static/loading.webp" />
+<pre class="output-pre language-go"><code id="output" class="output language-go">{{ .Generated }}</code></pre>
+{{- end }}

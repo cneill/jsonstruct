@@ -124,6 +124,8 @@ type Structs struct {
 
 ### JSON array of objects
 
+**Input:**
+
 ```json
 [
     {
@@ -142,6 +144,8 @@ type Structs struct {
     }
 ]
 ```
+
+**Output:**
 
 ```golang
 type Stdin1 struct {
